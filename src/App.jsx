@@ -1,0 +1,139 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+import DashboardEnseignant from './pages/DashboardEnseignant';
+import DashboardParent from './pages/DashboardParent';
+import Emploi from './pages/Emploi';
+import Eleves from './pages/Eleves';
+import Classes from './pages/Classes';
+import Enseignants from './pages/Enseignants';
+import Paiements from './pages/Paiements';
+import Salles from './pages/Salles';
+import Parents from './pages/Parents';
+import Inscriptions from './pages/Inscriptions';
+import Parametres from './pages/Parametres';
+import Messages from './pages/Messages';
+import { Calendar, MessageSquare, Settings, ClipboardList, BookOpen, Bus as BusIcon } from 'lucide-react';
+import CoursEvaluations from './pages/CoursEvaluations';
+import Tranches from './pages/Tranches';
+import Rapports from './pages/Rapports';
+import Layout from './components/Layout';
+import ParentLayout from './components/ParentLayout';
+import TeacherLayout from './components/TeacherLayout';
+import BusPage from './pages/Bus';
+
+function ProtectedRoute({ children, allowedRoles }) {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" />;
+  if (allowedRoles) {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!allowedRoles.includes(user.role)) {
+      // Redirect to correct dashboard
+      if (user.role === 'enseignant') return <Navigate to="/enseignant/dashboard" />;
+      if (user.role === 'parent') return <Navigate to="/parent/dashboard" />;
+      return <Navigate to="/dashboard" />;
+    }
+  }
+  return children;
+}
+
+function ComingSoon({ title, icon: Icon, color = '#2563eb', description }) {
+  return (
+    <Layout title={title}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <div style={{ width: 80, height: 80, borderRadius: 20, background: color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <Icon size={36} color={color} />
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{title}</div>
+        <div style={{ fontSize: 14, color: '#64748b', marginBottom: 24, textAlign: 'center', maxWidth: 400 }}>
+          {description || 'Cette section sera disponible prochainement.'}
+        </div>
+      </div>
+    </Layout>
+  );
+}
+
+function ParentComingSoon({ title, icon: Icon, color = '#8b5cf6', description }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+      <div style={{ width: 80, height: 80, borderRadius: 20, background: color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+        <Icon size={36} color={color} />
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 14, color: '#64748b', marginBottom: 24, textAlign: 'center', maxWidth: 400 }}>
+        {description || 'Cette section sera disponible prochainement.'}
+      </div>
+    </div>
+  );
+}
+
+function TeacherComingSoon({ title, icon: Icon, color = '#10b981', description }) {
+  return (
+    <TeacherLayout title={title} subtitle="Navigation enseignant fixe">
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
+        <div style={{ width: 80, height: 80, borderRadius: 20, background: color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <Icon size={36} color={color} />
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>{title}</div>
+        <div style={{ fontSize: 14, color: '#64748b', marginBottom: 24, textAlign: 'center', maxWidth: 400 }}>
+          {description || 'Cette section sera disponible prochainement.'}
+        </div>
+      </div>
+    </TeacherLayout>
+  );
+}
+
+// Redirect après login selon le rôle
+function HomeRedirect() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  if (user.role === 'enseignant') return <Navigate to="/enseignant/dashboard" />;
+  if (user.role === 'parent') return <Navigate to="/parent/dashboard" />;
+  return <Navigate to="/dashboard" />;
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+
+        {/* ── ADMIN ── */}
+        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Dashboard /></ProtectedRoute>} />
+        <Route path="/eleves" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Eleves /></ProtectedRoute>} />
+        <Route path="/classes" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Classes /></ProtectedRoute>} />
+        <Route path="/enseignants" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Enseignants /></ProtectedRoute>} />
+        <Route path="/paiements" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Paiements /></ProtectedRoute>} />
+        <Route path="/salles" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Salles /></ProtectedRoute>} />
+        <Route path="/bus" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><BusPage /></ProtectedRoute>} />
+        <Route path="/bus-scolaire" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><BusPage /></ProtectedRoute>} />
+        <Route path="/parents" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Parents /></ProtectedRoute>} />
+        <Route path="/inscriptions" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Inscriptions /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Parametres /></ProtectedRoute>} />
+        <Route path="/messages" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Messages /></ProtectedRoute>} />
+        <Route path="/evaluations" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><CoursEvaluations /></ProtectedRoute>} />
+        <Route path="/tranches" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Tranches /></ProtectedRoute>} />
+        <Route path="/rapports" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Rapports /></ProtectedRoute>} />
+        <Route path="/emploi-du-temps" element={<ProtectedRoute allowedRoles={['admin','superadmin','enseignant','parent']}><Emploi /></ProtectedRoute>} />
+        <Route path="/enseignant/emploi-du-temps" element={<ProtectedRoute allowedRoles={['enseignant']}><Emploi /></ProtectedRoute>} />
+        <Route path="/parent/emploi-du-temps" element={<ProtectedRoute allowedRoles={['parent']}><Emploi /></ProtectedRoute>} />
+        <Route path="/discipline" element={<ProtectedRoute allowedRoles={['admin','superadmin']}>
+          <ComingSoon title="Rapports & Discipline" icon={ClipboardList} color="#dc2626" description="Suivi disciplinaire, bulletins et rapports par année académique." />
+        </ProtectedRoute>} />
+
+        {/* ── ENSEIGNANT ── */}
+        <Route path="/enseignant/dashboard" element={<ProtectedRoute allowedRoles={['enseignant']}><DashboardEnseignant /></ProtectedRoute>} />
+        <Route path="/enseignant/*" element={<ProtectedRoute allowedRoles={['enseignant']}><DashboardEnseignant /></ProtectedRoute>} />
+
+        {/* ── PARENT ── */}
+        <Route path="/parent/dashboard" element={<ProtectedRoute allowedRoles={['parent']}><DashboardParent /></ProtectedRoute>} />
+        <Route path="/parent/*" element={<ProtectedRoute allowedRoles={['parent']}><DashboardParent /></ProtectedRoute>} />
+
+        <Route path="/" element={<HomeRedirect />} />
+        <Route path="*" element={<HomeRedirect />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}

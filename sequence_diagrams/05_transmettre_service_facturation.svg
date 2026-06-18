@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <style>
+    .actor { fill:#8b3e2f; stroke:#fff; stroke-width:2px; rx:12px; }
+    .system { fill:#0b66b2; stroke:#fff; stroke-width:2px; rx:12px; }
+    .label { fill:#fff; font-family: Arial, Helvetica, sans-serif; font-size:20px; font-weight:700 }
+    .msg { fill:#000; font-family: Arial, Helvetica, sans-serif; font-size:16px }
+    .lifeline { stroke:#999; stroke-dasharray:4 4 }
+    .arrow { stroke:#0062ff; stroke-width:2; marker-end:url(#arrowhead) }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0062ff" />
+    </marker>
+  </defs>
+
+  <rect x="80" y="30" width="220" height="60" class="actor"/>
+  <text x="190" y="70" text-anchor="middle" class="label">Client</text>
+
+  <rect x="900" y="30" width="240" height="60" class="system"/>
+  <text x="1020" y="70" text-anchor="middle" class="label">Système</text>
+
+  <line x1="190" y1="110" x2="190" y2="620" class="lifeline" />
+  <line x1="1020" y1="110" x2="1020" y2="620" class="lifeline" />
+
+  <g>
+    <line x1="230" y1="160" x2="900" y2="160" class="arrow" />
+    <text x="570" y="150" text-anchor="middle" class="msg">1: transmettreBordereau(idPaquet, frais, taxes)</text>
+
+    <line x1="900" y1="210" x2="230" y2="210" stroke="#0a0" stroke-width="2" marker-end="url(#arrowhead)" />
+    <text x="570" y="200" text-anchor="middle" class="msg">2: accuséRéception(factureProvisoireId)</text>
+
+    <line x1="900" y1="260" x2="230" y2="260" stroke="#0a0" stroke-width="2" marker-end="url(#arrowhead)" />
+    <text x="570" y="250" text-anchor="middle" class="msg">3: confirmationPriseEnCompte</text>
+  </g>
+
+  <text x="600" y="660" font-size="12" fill="#666">Diagramme 05 — Transmettre au service facturation (Client ↔ Système)</text>
+</svg>
