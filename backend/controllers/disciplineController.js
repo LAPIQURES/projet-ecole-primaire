@@ -1,36 +1,17 @@
 const pool = require('../database/db');
 
-// Enregistrer un problème de discipline
-exports.createDisciplineLog = async (req, res) => {
+// Récupérer le résumé de discipline
+exports.getDisciplineSummary = async (req, res) => {
   try {
-    const { matricule, type, libelle, description, dateEvenement, gravite, nombreAbsences, nombreConvocations, punishment } = req.body;
+    const [rows] = await pool.query(`
+      SELECT d.ID, d.libelle, d.points
+      FROM Discipline d
+      LIMIT 100
+    `);
     
-    if (!matricule || !type || !libelle || !dateEvenement) {
-      return res.status(400).json({ error: 'Champs requis: matricule, type, libelle, dateEvenement' });
-    }
-
-    const idPersEnregistrement = req.user?.id || 1000;
-    
-    // Récupérer l'année académique actuelle
-    const [annees] = await pool.query(`SELECT idAnnee FROM AnneeAcademique ORDER BY created_at DESC LIMIT 1`);
-    const idAnnee = annees[0]?.idAnnee || 1;
-
-    const [result] = await pool.query(`
-      INSERT INTO DisciplineLog 
-      (matricule, idAnnee, type, libelle, description, dateEvenement, 
-       gravite, nombreAbsences, nombreConvocations, punition, idPersEnregistrement)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [matricule, idAnnee, type, libelle, description || '', dateEvenement, 
-        gravite || 'moyen', nombreAbsences || 0, nombreConvocations || 0, 
-        punishment || '', idPersEnregistrement]);
-
-    res.status(201).json({ 
-      idDiscipline: result.insertId,
-      message: 'Problème de discipline enregistré',
-      type
-    });
+    res.json(rows);
   } catch (error) {
-    console.error('createDisciplineLog error:', error.message);
+    console.error('getDisciplineSummary error:', error.message);
     res.status(500).json({ error: error.message });
   }
 };
@@ -38,19 +19,11 @@ exports.createDisciplineLog = async (req, res) => {
 // Récupérer les problèmes de discipline d'un élève
 exports.getDisciplineEleve = async (req, res) => {
   try {
-    const { matricule } = req.params;
-    
     const [logs] = await pool.query(`
-      SELECT dl.idDiscipline, dl.matricule, dl.type, dl.libelle, 
-             dl.description, dl.dateEvenement, dl.gravite, 
-             dl.nombreAbsences, dl.nombreConvocations, dl.punition,
-             dl.statut, dl.dateEnregistrement,
-             p.nom AS enregistrePar, p.prenom
-      FROM DisciplineLog dl
-      LEFT JOIN Personne p ON p.idPers = dl.idPersEnregistrement
-      WHERE dl.matricule = ?
-      ORDER BY dl.dateEvenement DESC
-    `, [matricule]);
+      SELECT d.ID, d.libelle, d.points
+      FROM Discipline d
+      LIMIT 100
+    `);
 
     res.json(logs);
   } catch (error) {
@@ -59,70 +32,47 @@ exports.getDisciplineEleve = async (req, res) => {
   }
 };
 
-// Récupérer le résumé de discipline pour une classe/année
-exports.getDisciplineSummary = async (req, res) => {
+// Créer un problème de discipline
+exports.createDisciplineLog = async (req, res) => {
   try {
-    const { idSalle, idAnnee } = req.query;
+    const { libelle, points } = req.body;
     
-    let query = `
-      SELECT dl.matricule, 
-             e.nom, e.prenom,
-             COUNT(CASE WHEN dl.type = 'absence' THEN 1 END) AS totalAbsences,
-             COUNT(CASE WHEN dl.type = 'convocation' THEN 1 END) AS totalConvocations,
-             COUNT(CASE WHEN dl.type = 'infraction' THEN 1 END) AS totalInfractions,
-             COUNT(CASE WHEN dl.type = 'avertissement' THEN 1 END) AS totalAvertissements,
-             COUNT(CASE WHEN dl.gravite = 'grave' THEN 1 END) AS gravesCount,
-             MAX(dl.dateEvenement) AS dernierProbleme
-      FROM DisciplineLog dl
-      JOIN Eleve e ON e.matricule = dl.matricule
-      WHERE 1=1
-    `;
-    
-    let params = [];
-    
-    if (idSalle) {
-      query += ` AND e.matricule IN (
-        SELECT DISTINCT f.matricule FROM Frequente f WHERE f.idSalle = ?
-      )`;
-      params.push(idSalle);
+    if (!libelle) {
+      return res.status(400).json({ error: 'Champ requis: libelle' });
     }
-    
-    if (idAnnee) {
-      query += ` AND dl.idAnnee = ?`;
-      params.push(idAnnee);
-    }
-    
-    query += ` GROUP BY dl.matricule, e.nom, e.prenom
-              ORDER BY gravesCount DESC, totalConvocations DESC`;
-    
-    const [summary] = await pool.query(query, params);
-    res.json(summary);
+
+    const [result] = await pool.query(`
+      INSERT INTO Discipline (libelle, points)
+      VALUES (?, ?)
+    `, [libelle, points || 0]);
+
+    res.status(201).json({ 
+      id: result.insertId,
+      message: 'Problème de discipline enregistré',
+      libelle
+    });
   } catch (error) {
-    console.error('getDisciplineSummary error:', error.message);
+    console.error('createDisciplineLog error:', error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
-// Mettre à jour le statut d'un problème de discipline
+// Mettre à jour un problème de discipline
 exports.updateDisciplineLog = async (req, res) => {
   try {
     const { id } = req.params;
-    const { statut, punition, motivation } = req.body;
+    const { libelle, points } = req.body;
 
     let updateFields = [];
     let updateValues = [];
 
-    if (statut) {
-      updateFields.push('statut = ?');
-      updateValues.push(statut);
+    if (libelle) {
+      updateFields.push('libelle = ?');
+      updateValues.push(libelle);
     }
-    if (punition) {
-      updateFields.push('punition = ?');
-      updateValues.push(punition);
-    }
-    if (motivation) {
-      updateFields.push('motivation = ?');
-      updateValues.push(motivation);
+    if (points !== undefined) {
+      updateFields.push('points = ?');
+      updateValues.push(points);
     }
 
     if (updateFields.length === 0) {
@@ -130,9 +80,9 @@ exports.updateDisciplineLog = async (req, res) => {
     }
 
     updateValues.push(id);
-    await pool.query(`UPDATE DisciplineLog SET ${updateFields.join(', ')} WHERE idDiscipline = ?`, updateValues);
+    await pool.query(`UPDATE Discipline SET ${updateFields.join(', ')} WHERE ID = ?`, updateValues);
 
-    res.json({ message: 'Problème de discipline mis à jour', idDiscipline: id });
+    res.json({ message: 'Problème de discipline mis à jour', id });
   } catch (error) {
     console.error('updateDisciplineLog error:', error.message);
     res.status(500).json({ error: error.message });
@@ -144,8 +94,8 @@ exports.deleteDisciplineLog = async (req, res) => {
   try {
     const { id } = req.params;
     
-    await pool.query(`DELETE FROM DisciplineLog WHERE idDiscipline = ?`, [id]);
-    res.json({ message: 'Problème de discipline supprimé', idDiscipline: id });
+    await pool.query(`DELETE FROM Discipline WHERE ID = ?`, [id]);
+    res.json({ message: 'Problème de discipline supprimé', id });
   } catch (error) {
     console.error('deleteDisciplineLog error:', error.message);
     res.status(500).json({ error: error.message });
@@ -155,21 +105,71 @@ exports.deleteDisciplineLog = async (req, res) => {
 // Récupérer statistiques de discipline
 exports.getDisciplineStats = async (req, res) => {
   try {
-    const { matricule, idAnnee } = req.query;
-    
     const [stats] = await pool.query(`
       SELECT 
-        type,
-        COUNT(*) AS nombre,
-        AVG(CASE WHEN gravite = 'grave' THEN 1 ELSE 0 END) AS pourcentageGrave
-      FROM DisciplineLog
-      WHERE matricule = ? AND idAnnee = ?
-      GROUP BY type
-    `, [matricule, idAnnee]);
+        d.ID, 
+        d.libelle, 
+        d.points
+      FROM Discipline d
+    `);
 
     res.json(stats);
   } catch (error) {
     console.error('getDisciplineStats error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get absence/discipline data for admin (from Frequente table)
+exports.getAbsenceData = async (req, res) => {
+  try {
+    const { matricule, enseignant, month, year } = req.query;
+    
+    let query = `
+      SELECT 
+        f.idFrequente,
+        f.matricule,
+        e.nom AS eleveNom,
+        e.prenom AS elevePrenom,
+        f.created_at,
+        f.commentaire,
+        s.libelle AS salle,
+        CASE 
+          WHEN f.commentaire LIKE '%absent%' OR f.commentaire LIKE '%Absent%' THEN 'Absent'
+          ELSE 'Présent'
+        END AS status,
+        DATE_FORMAT(f.created_at, '%Y-%m-%d') AS date,
+        MONTH(f.created_at) AS mois,
+        YEAR(f.created_at) AS annee
+      FROM Frequente f
+      LEFT JOIN Eleve e ON e.matricule = f.matricule
+      LEFT JOIN Salle s ON s.idSalle = f.idSalle
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    if (matricule) {
+      query += ` AND f.matricule = ?`;
+      params.push(matricule);
+    }
+    
+    if (month) {
+      query += ` AND MONTH(f.created_at) = ?`;
+      params.push(month);
+    }
+    
+    if (year) {
+      query += ` AND YEAR(f.created_at) = ?`;
+      params.push(year);
+    }
+    
+    query += ` ORDER BY f.created_at DESC LIMIT 500`;
+    
+    const [rows] = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error('getAbsenceData error:', error.message);
     res.status(500).json({ error: error.message });
   }
 };

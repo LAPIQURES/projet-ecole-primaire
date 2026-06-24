@@ -5,7 +5,8 @@ import API from '../services/api';
 import Layout from '../components/Layout';
 import { getInitials } from '../utils/avatar';
 import BulletinViewer from '../components/BulletinViewer';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import PrintableBulletin from '../components/PrintableBulletin';
+import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 const COLORS = { blue:'#3b82f6', green:'#10b981', purple:'#8b5cf6', amber:'#f59e0b', red:'#ef4444', slate:'#64748b' };
 
@@ -80,54 +81,119 @@ function AvatarCircle({ photoURL, prenom, nom, size = 38, fallbackFontSize = 13,
   );
 }
 
-// Fiche détaillée élève conforme à l'Image 3 (Premium Dashboard View)
+// Fiche détaillée élève - Données cohérentes avec la BD
 function FicheEleve({ eleve, onClose, onEdit, salles }) {
-  const [calendarMonth, setCalendarMonth] = useState(new Date()); // Date actuelle au lieu de février 2023
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [showBulletin, setShowBulletin] = useState(false);
+  const [attendanceMonth, setAttendanceMonth] = useState(new Date());
+  const [parents, setParents] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
 
-  const fatherName = eleve.parents && eleve.parents.length > 0
-    ? `${eleve.parents[0].prenom} ${eleve.parents[0].nom}`
-    : 'Alex Dupont';
-  const motherName = eleve.parents && eleve.parents.length > 1
-    ? `${eleve.parents[1].prenom} ${eleve.parents[1].nom}`
-    : 'Jessica Dupont';
-  const parentMobile = eleve.parents && eleve.parents.length > 0
-    ? eleve.parents[0].mobile
-    : '+ 88 9856418';
-  const parentEmail = eleve.parents && eleve.parents.length > 0
-    ? (eleve.parents[0].email || eleve.parents[0].username || eleve.parents[0].mobile || `${(eleve.prenom || 'student').toLowerCase()}${(eleve.nom || '').toLowerCase()}@gmail.com`)
+  // Load real parents and attendance data from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load real parents
+        const parentsRes = await API.get(`/api/eleves/${eleve.matricule}/parents`);
+        setParents(parentsRes.data || []);
+
+        // Load attendance for current month
+        const month = attendanceMonth.toISOString().split('T')[0].substring(0, 7); // YYYY-MM
+        const attendanceRes = await API.get(`/api/eleves/${eleve.matricule}/attendance`, {
+          params: { month }
+        });
+        setAttendance(attendanceRes.data || []);
+      } catch (error) {
+        console.error('Error loading student data:', error);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    
+    if (eleve?.matricule) {
+      loadData();
+    }
+  }, [eleve.matricule, attendanceMonth]);
+
+  // Parents - utiliser les vraies données depuis ParentEleve
+  const fatherName = parents && parents.length > 0
+    ? `${parents[0].prenom || ''} ${parents[0].nom || ''}`.trim()
+    : '—';
+  const motherName = parents && parents.length > 1
+    ? `${parents[1].prenom || ''} ${parents[1].nom || ''}`.trim()
+    : '—';
+  const parentMobile = parents && parents.length > 0
+    ? parents[0].mobile
+    : '—';
+  const parentEmail = parents && parents.length > 0
+    ? (parents[0].email || parents[0].mobile || `${(eleve.prenom || 'student').toLowerCase()}${(eleve.nom || '').toLowerCase()}@gmail.com`)
     : `${(eleve.prenom || 'student').toLowerCase()}${(eleve.nom || '').toLowerCase()}@gmail.com`;
 
-  // Attendance stats for Recharts Pie Chart
-  const attendanceData = [
-    { name: 'Présent', value: 72, color: '#0062ff' },
-    { name: 'Présence demi-journée', value: 15, color: '#7fb0ff' },
-    { name: 'Retard', value: 8, color: '#ffa000' },
-    { name: 'Absent', value: 5, color: '#ffb74d' }
-  ];
+  // Classe et salle - récupérées depuis eleve
+  const classe = eleve.classe || '—';
+  const salle = eleve.salle || '—';
 
-  // Evaluations mapping to Exam Results
-  const exams = eleve.evaluations?.length > 0
+  // Calcul de la progression basé sur les vraies notes
+  const averageNote = eleve.evaluations && eleve.evaluations.length > 0
+    ? (eleve.evaluations.reduce((sum, ev) => sum + (ev.note || 0), 0) / eleve.evaluations.length)
+    : 0;
+  const progression = Math.round((averageNote / 20) * 100);
+
+  // Données pour graphique LineChart - évolution par évaluation
+  const evolutionData = eleve.evaluations && eleve.evaluations.length > 0
+    ? eleve.evaluations.map((ev, idx) => ({
+        name: `Éval ${idx + 1}`,
+        note: parseFloat(ev.note || 0).toFixed(1),
+        cours: ev.cours || 'Cours'
+      }))
+    : [];
+
+  // Évaluations mappées en résultats cohérents avec la BD
+  const exams = eleve.evaluations && eleve.evaluations.length > 0
     ? eleve.evaluations.map((ev, idx) => {
         const grade = ev.note >= 16 ? 'A+' : ev.note >= 14 ? 'A' : ev.note >= 12 ? 'B' : ev.note >= 10 ? 'C' : 'F';
         return {
-          id: `#mat${ev.idEval || idx + 21}`,
-          type: ev.session || 'Test de classe',
-          subject: ev.cours || 'Maths',
+          id: `#eval${ev.idEval || idx + 1}`,
+          type: ev.session || 'Évaluation',
+          subject: ev.cours || 'Cours',
           grade: grade,
           percent: `${Math.round((ev.note / 20) * 100)}%`,
-          date: ev.created_at ? new Date(ev.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '21 juil. 2022'
+          date: ev.created_at ? new Date(ev.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
         };
       })
-    : [
-        { id: '#mat21', type: 'Test de classe', subject: 'Maths', grade: 'A', percent: '89%', date: '21 juil. 2022' },
-        { id: '#mat21', type: 'Test trimestriel', subject: 'Anglais', grade: 'A+', percent: '93%', date: '14 juin 2022' },
-        { id: '#mat21', type: 'Test oral', subject: 'Physique', grade: 'B', percent: '78%', date: '10 mars 2022' },
-        { id: '#mat21', type: 'Test de classe', subject: 'Chimie', grade: 'A', percent: '88%', date: '06 janv. 2022' }
+    : [];
+
+  // Attendance stats for selected month (Real data from Frequente table)
+  const getAttendanceStats = () => {
+    if (!attendance || attendance.length === 0) {
+      return [
+        { name: 'Pas de données', value: 100, color: '#c7d2e0' }
       ];
+    }
+
+    const absent = attendance.filter(a => a.status === 'Absent').length;
+    const present = attendance.filter(a => a.status === 'Présent').length;
+    
+    return [
+      { name: 'Présent', value: present, color: '#0062ff' },
+      { name: 'Absent', value: absent, color: '#ffb74d' }
+    ].filter(s => s.value > 0);
+  };
+
+  const attendanceData = getAttendanceStats();
 
   const handlePrint = () => {
-    window.print();
+    // Create a new window for printing the bulletin
+    const printWindow = window.open('', '_blank');
+    const printContent = document.getElementById('printable-bulletin');
+    if (printContent && printWindow) {
+      printWindow.document.write(printContent.innerHTML);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    }
   };
 
   return (
@@ -178,13 +244,11 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
                   { label: 'Sexe', value: (eleve.sexe === 1 || eleve.sexe === '1') ? 'Masculin' : 'Féminin' },
                   { label: 'Nom du père', value: fatherName },
                   { label: 'Nom de la mère', value: motherName },
-                  { label: 'Date de naissance', value: eleve.dateNaissance ? new Date(eleve.dateNaissance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '14 juin 2006' },
-                  { label: 'Religion', value: 'Chrétienne' },
-                  { label: 'Profession du père', value: 'Banquier' },
-                  { label: "Date d'admission", value: eleve.created_at ? new Date(eleve.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '05 juin 2012' },
-                  { label: 'Adresse', value: eleve.lieuNaissance ? `Lieu : ${eleve.lieuNaissance}` : 'Maison 10, Rue 6, Yaoundé.' },
-                  { label: 'Classe', value: eleve.classe || '11e' },
-                  { label: 'Section', value: eleve.salle || 'Rose' }
+                  { label: 'Date de naissance', value: eleve.dateNaissance ? new Date(eleve.dateNaissance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
+                  { label: 'Classe', value: classe },
+                  { label: 'Salle', value: salle },
+                  { label: "Date d'admission", value: eleve.created_at ? new Date(eleve.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '—' },
+                  { label: 'Lieu de naissance', value: eleve.lieuNaissance ? `${eleve.lieuNaissance}` : '—' }
                 ].map((detail, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f7fafc', fontSize: '13px' }}>
                     <span style={{ color: '#718096', fontWeight: '500' }}>{detail.label}:</span>
@@ -220,8 +284,8 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div style={{ background: '#ffffff', borderRadius: '20px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
               <div>
-                <span style={{ fontSize: '13px', color: '#718096', fontWeight: '600' }}>Événements</span>
-                <h4 style={{ fontSize: '28px', fontWeight: '800', color: '#1a202c', margin: '4px 0 0' }}>{eleve.rapports?.length || 6}</h4>
+                <span style={{ fontSize: '13px', color: '#718096', fontWeight: '600' }}>Évaluations</span>
+                <h4 style={{ fontSize: '28px', fontWeight: '800', color: '#1a202c', margin: '4px 0 0' }}>{eleve.evaluations?.length || 0}</h4>
               </div>
               <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#ebf4ff', color: '#0062ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Activity size={20} />
@@ -231,19 +295,50 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
             <div style={{ background: '#ffffff', borderRadius: '20px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
               <div>
                 <span style={{ fontSize: '13px', color: '#718096', fontWeight: '600' }}>Progression</span>
-                <h4 style={{ fontSize: '28px', fontWeight: '800', color: '#1a202c', margin: '4px 0 0' }}>72%</h4>
+                <h4 style={{ fontSize: '28px', fontWeight: '800', color: '#1a202c', margin: '4px 0 0' }}>{progression}%</h4>
               </div>
-              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#f7fafc', color: '#4a5568', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <TrendingUp size={20} color="#ffa000" />
+              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: progression >= 70 ? '#f0fdf4' : '#fff7ed', color: progression >= 70 ? '#10b981' : '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TrendingUp size={20} />
               </div>
             </div>
           </div>
 
-          {/* Attendance Donut Chart Card (Row 2) */}
+          {/* Evolution Chart - LineChart */}
+          {evolutionData.length > 0 && (
+            <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#1a202c', margin: '0 0 16px' }}>Évolution des notes</h4>
+              <div style={{ width: '100%', height: '250px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={evolutionData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis domain={[0, 20]} />
+                    <Tooltip formatter={(value) => `${value}/20`} />
+                    <Legend />
+                    <Line type="monotone" dataKey="note" stroke="#0062ff" strokeWidth={2} dot={{ fill: '#0062ff', r: 5 }} name="Note" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {/* Attendance Donut Chart Card - DYNAMIC BY MONTH */}
           <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#1a202c', margin: 0 }}>Présences</h4>
-              <span style={{ fontSize: '13px', color: '#718096', fontWeight: '600' }}>Fév. 2023 v</span>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button 
+                  onClick={() => setAttendanceMonth(new Date(attendanceMonth.getFullYear(), attendanceMonth.getMonth() - 1))}
+                  style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#666' }}
+                >&lt;</button>
+                <span style={{ fontSize: '12px', color: '#718096', fontWeight: '600', minWidth: '100px', textAlign: 'center' }}>
+                  {attendanceMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                </span>
+                <button 
+                  onClick={() => setAttendanceMonth(new Date(attendanceMonth.getFullYear(), attendanceMonth.getMonth() + 1))}
+                  style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#666' }}
+                >&gt;</button>
+              </div>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '20px', alignItems: 'center' }}>
@@ -268,12 +363,12 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
                 </ResponsiveContainer>
                 {/* Center text */}
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '26px', fontWeight: '800', color: '#1a202c' }}>92%</div>
+                  <div style={{ fontSize: '26px', fontWeight: '800', color: '#1a202c' }}>{Math.round(attendanceData[0].value)}%</div>
                   <div style={{ fontSize: '10px', color: '#718096', fontWeight: '600', textTransform: 'uppercase' }}>Présent</div>
                 </div>
               </div>
               
-              {/* Doughnut Legend */}
+              {/* Legend */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 {attendanceData.map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -288,38 +383,42 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
             </div>
           </div>
 
-          {/* All Exam Results Table Card (Row 3) */}
+          {/* All Exam Results Table Card */}
           <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#1a202c', margin: 0 }}>Résultats d'examens</h4>
+              <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#1a202c', margin: 0 }}>Résultats d'évaluations</h4>
               <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#718096' }}>...</button>
             </div>
             
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1.5px solid #edf2f7' }}>
-                  {['Exam Id', 'Type', 'Subject', 'Grade', '%', 'Date'].map(h => (
-                    <th key={h} style={{ padding: '12px 8px', fontSize: '11px', fontWeight: '700', color: '#718096', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {exams.map((exam, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #edf2f7' }}>
-                    <td style={{ padding: '14px 8px', fontSize: '13px', color: '#718096', fontWeight: '500' }}>{exam.id}</td>
-                    <td style={{ padding: '14px 8px', fontSize: '13px', color: '#2d3748', fontWeight: '600' }}>{exam.type}</td>
-                    <td style={{ padding: '14px 8px', fontSize: '13px', color: '#718096', fontWeight: '500' }}>{exam.subject}</td>
-                    <td style={{ padding: '14px 8px' }}>
-                      <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', background: exam.grade.startsWith('A') ? '#ecfdf5' : '#eff6ff', color: exam.grade.startsWith('A') ? '#059669' : '#2563eb' }}>
-                        {exam.grade}
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px 8px', fontSize: '13px', color: '#2d3748', fontWeight: '700' }}>{exam.percent}</td>
-                    <td style={{ padding: '14px 8px', fontSize: '13px', color: '#718096', fontWeight: '500' }}>{exam.date}</td>
+            {exams.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>Aucune évaluation enregistrée</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1.5px solid #edf2f7' }}>
+                    {['Id', 'Type', 'Matière', 'Grade', '%', 'Date'].map(h => (
+                      <th key={h} style={{ padding: '12px 8px', fontSize: '11px', fontWeight: '700', color: '#718096', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {exams.map((exam, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #edf2f7' }}>
+                      <td style={{ padding: '14px 8px', fontSize: '13px', color: '#718096', fontWeight: '500' }}>{exam.id}</td>
+                      <td style={{ padding: '14px 8px', fontSize: '13px', color: '#2d3748', fontWeight: '600' }}>{exam.type}</td>
+                      <td style={{ padding: '14px 8px', fontSize: '13px', color: '#718096', fontWeight: '500' }}>{exam.subject}</td>
+                      <td style={{ padding: '14px 8px' }}>
+                        <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', background: exam.grade.startsWith('A') ? '#ecfdf5' : '#eff6ff', color: exam.grade.startsWith('A') ? '#059669' : '#2563eb' }}>
+                          {exam.grade}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 8px', fontSize: '13px', color: '#2d3748', fontWeight: '700' }}>{exam.percent}</td>
+                      <td style={{ padding: '14px 8px', fontSize: '13px', color: '#718096', fontWeight: '500' }}>{exam.date}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
         </div>
@@ -406,6 +505,11 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
 
       </div>
 
+      {/* Hidden Printable Bulletin for Print View */}
+      <div id="printable-bulletin" style={{ display: 'none' }}>
+        <PrintableBulletin eleve={eleve} />
+      </div>
+
       {/* BulletinViewer Modal */}
       {showBulletin && <BulletinViewer matricule={eleve.matricule} onClose={() => setShowBulletin(false)} />}
     </div>
@@ -423,6 +527,7 @@ export default function Eleves() {
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({ nom: '', prenom: '', sexe: '1', dateNaissance: '', lieuNaissance: '', langue: 'Francais', idSalle: '', photoURL: '' });
 
   useEffect(() => { load(); }, []);
@@ -450,11 +555,23 @@ export default function Eleves() {
   const handleSubmit = async () => {
     if (!form.nom || !form.prenom) { setError('Nom et prénom requis'); return; }
     setError('');
+    setIsSaving(true);
     try {
-      if (editing) { await updateEleveAPI(editing.matricule, { ...form, actif: editing.actif }); setSuccess('Élève modifié !'); }
-      else { await createEleveAPI(form); setSuccess('Élève créé !'); }
-      setShowModal(false); load(); setTimeout(() => setSuccess(''), 3000);
-    } catch(e) { setError(e.response?.data?.error || 'Erreur'); }
+      if (editing) {
+        await updateEleveAPI(editing.matricule, { ...form, actif: editing.actif });
+        setSuccess('Élève modifié !');
+      } else {
+        await createEleveAPI(form);
+        setSuccess('Élève créé !');
+      }
+      setShowModal(false);
+      await load();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch(e) {
+      setError(e.response?.data?.error || 'Erreur');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleToggle = async (el) => {
@@ -592,8 +709,8 @@ export default function Eleves() {
             <div style={{ gridColumn: '1/-1' }}><label style={s.label}>Photo URL</label><input style={s.inp} value={form.photoURL} onChange={e => setForm({ ...form, photoURL: e.target.value })} placeholder="https://exemple.com/photo.jpg" /></div>
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>
-            <button onClick={() => setShowModal(false)} style={s.btn('#64748b', true)}>Annuler</button>
-            <button onClick={handleSubmit} style={s.btn('#0062ff')}>{editing ? 'Modifier' : "Enregistrer l'élève"}</button>
+            <button onClick={() => setShowModal(false)} style={s.btn('#64748b', true)} disabled={isSaving}>Annuler</button>
+            <button onClick={handleSubmit} style={s.btn('#0062ff')} disabled={isSaving}>{isSaving ? 'Enregistrement...' : editing ? 'Modifier' : "Enregistrer l'élève"}</button>
           </div>
         </Modal>
       )}

@@ -3,6 +3,9 @@ const router = express.Router();
 const disciplineController = require('../controllers/disciplineController');
 const { verifyAdmin } = require('../middleware/auth');
 
+// Récupérer tous les problèmes de discipline
+router.get('/', disciplineController.getDisciplineSummary);
+
 // Enregistrer un problème de discipline
 router.post('/create', verifyAdmin, disciplineController.createDisciplineLog);
 
@@ -14,6 +17,9 @@ router.get('/summary', disciplineController.getDisciplineSummary);
 
 // Récupérer statistiques de discipline
 router.get('/stats', disciplineController.getDisciplineStats);
+
+// Get absence data for admin dashboard
+router.get('/absences/list', verifyAdmin, disciplineController.getAbsenceData);
 
 // Mettre à jour un problème de discipline
 router.put('/:id', verifyAdmin, disciplineController.updateDisciplineLog);

@@ -12,15 +12,15 @@ router.get('/', async (req, res) => {
     const [annees] = await pool.query(`
       SELECT idAnnee, libelle, periode, created_at
       FROM AnneeAcademique
-      ORDER BY created_at DESC
+      ORDER BY idAnnee DESC
       LIMIT 10
     `);
 
     // Récupérer les trimestres
     const [trimestres] = await pool.query(`
-      SELECT idTrimes, libelle, periode, idAca, created_at
+      SELECT idTrimes, libelle, periode, idAca
       FROM Trimestre
-      ORDER BY created_at DESC
+      ORDER BY idTrimes DESC
       LIMIT 20
     `);
 

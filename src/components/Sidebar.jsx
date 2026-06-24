@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, BookOpen, UserCheck, Calendar,
   CreditCard, MessageSquare, LogOut, Settings,
   ChevronLeft, ChevronRight, GraduationCap, ClipboardList,
-  Building2, Bus, UserCog,
+  Building2, Bus, UserCog, FileText,
 } from 'lucide-react';
 
 const adminNavGroups = [
@@ -30,9 +30,12 @@ const adminNavGroups = [
     label: 'Gestion',
     items: [
       { name: 'Parents', icon: UserCog, path: '/parents' },
+      { name: 'Personnel', icon: UserCog, path: '/personnel' },
       { name: 'Paiements', icon: CreditCard, path: '/paiements' },
       { name: 'Bus Scolaire', icon: Bus, path: '/bus' },
+      { name: 'Bulletins', icon: ClipboardList, path: '/bulletins' },
       { name: 'Rapports', icon: ClipboardList, path: '/rapports' },
+      { name: 'Discipline & Absences', icon: ClipboardList, path: '/discipline' },
       { name: 'Messages', icon: MessageSquare, path: '/messages' },
     ],
   },

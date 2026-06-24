@@ -19,10 +19,14 @@ import { Calendar, MessageSquare, Settings, ClipboardList, BookOpen, Bus as BusI
 import CoursEvaluations from './pages/CoursEvaluations';
 import Tranches from './pages/Tranches';
 import Rapports from './pages/Rapports';
+import Bulletins from './pages/Bulletins';
+import Personnel from './pages/Personnel';
 import Layout from './components/Layout';
 import ParentLayout from './components/ParentLayout';
 import TeacherLayout from './components/TeacherLayout';
 import BusPage from './pages/Bus';
+import TeacherAttendanceRegister from './components/TeacherAttendanceRegister';
+import DisciplineModule from './components/DisciplineModule';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const token = localStorage.getItem('token');
@@ -116,15 +120,20 @@ export default function App() {
         <Route path="/evaluations" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><CoursEvaluations /></ProtectedRoute>} />
         <Route path="/tranches" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Tranches /></ProtectedRoute>} />
         <Route path="/rapports" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Rapports /></ProtectedRoute>} />
+        <Route path="/bulletins" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Bulletins /></ProtectedRoute>} />
+        <Route path="/personnel" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Personnel /></ProtectedRoute>} />
         <Route path="/emploi-du-temps" element={<ProtectedRoute allowedRoles={['admin','superadmin','enseignant','parent']}><Emploi /></ProtectedRoute>} />
         <Route path="/enseignant/emploi-du-temps" element={<ProtectedRoute allowedRoles={['enseignant']}><Emploi /></ProtectedRoute>} />
         <Route path="/parent/emploi-du-temps" element={<ProtectedRoute allowedRoles={['parent']}><Emploi /></ProtectedRoute>} />
         <Route path="/discipline" element={<ProtectedRoute allowedRoles={['admin','superadmin']}>
-          <ComingSoon title="Rapports & Discipline" icon={ClipboardList} color="#dc2626" description="Suivi disciplinaire, bulletins et rapports par année académique." />
+          <Layout><DisciplineModule /></Layout>
         </ProtectedRoute>} />
 
         {/* ── ENSEIGNANT ── */}
         <Route path="/enseignant/dashboard" element={<ProtectedRoute allowedRoles={['enseignant']}><DashboardEnseignant /></ProtectedRoute>} />
+        <Route path="/enseignant/cahier-appel" element={<ProtectedRoute allowedRoles={['enseignant']}>
+          <TeacherLayout><TeacherAttendanceRegister /></TeacherLayout>
+        </ProtectedRoute>} />
         <Route path="/enseignant/*" element={<ProtectedRoute allowedRoles={['enseignant']}><DashboardEnseignant /></ProtectedRoute>} />
 
         {/* ── PARENT ── */}

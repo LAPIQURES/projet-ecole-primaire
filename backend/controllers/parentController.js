@@ -8,19 +8,14 @@ async function getNextIdPers() {
 exports.getParents = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT pr.idParent, pr.matricule,
-        p.idPers, p.nom, p.prenom, p.mobile, p.phone,
+      SELECT DISTINCT pr.idParent, pr.idPers, p.nom, p.prenom, p.mobile, p.phone,
         CASE WHEN COALESCE(pr.isDelete, 0) = 1 OR COALESCE(p.isDelete, 0) = 1 THEN 0 ELSE 1 END AS actif,
-        e.nom AS eleveNom, e.prenom AS elevePrenom, e.matricule AS eleveMatricule,
-        s.libelle AS eleveSalle,
-        COUNT(DISTINCT pr2.matricule) AS nbEnfants
+        COUNT(DISTINCT pe.matricule) AS nbEnfants
       FROM Parents pr
       JOIN Personne p ON p.idPers = pr.idPers
-      LEFT JOIN Eleve e ON e.matricule = pr.matricule
-      LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Parents pr2 ON pr2.idPers = pr.idPers
-      GROUP BY pr.idParent, pr.matricule, p.idPers, p.nom, p.prenom, p.mobile, p.phone, e.nom, e.prenom, e.matricule, s.libelle
+      LEFT JOIN ParentEleve pe ON pe.idPers = pr.idPers
+      WHERE COALESCE(pr.isDelete, 0) = 0
+      GROUP BY pr.idParent, pr.idPers, p.nom, p.prenom, p.mobile, p.phone
       ORDER BY p.nom, p.prenom`);
     res.json(rows);
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -29,30 +24,27 @@ exports.getParents = async (req, res) => {
 exports.getParentById = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT pr.idParent, pr.matricule, p.idPers, p.nom, p.prenom, p.mobile, p.phone,
-        CASE WHEN COALESCE(pr.isDelete, 0) = 1 OR COALESCE(p.isDelete, 0) = 1 THEN 0 ELSE 1 END AS actif,
-        e.nom AS eleveNom, e.prenom AS elevePrenom, e.matricule AS eleveMatricule,
-        s.libelle AS eleveSalle, c.libelle AS eleveClasse, cy.libelle AS eleveCycle
-      FROM Parents pr JOIN Personne p ON p.idPers = pr.idPers
-      LEFT JOIN Eleve e ON e.matricule = pr.matricule
-      LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe c ON c.idClasse = s.idClasse
-      LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
+      SELECT pr.idParent, pr.idPers, p.nom, p.prenom, p.mobile, p.phone,
+        CASE WHEN COALESCE(pr.isDelete, 0) = 1 OR COALESCE(p.isDelete, 0) = 1 THEN 0 ELSE 1 END AS actif
+      FROM Parents pr
+      JOIN Personne p ON p.idPers = pr.idPers
       WHERE pr.idParent = ?`, [req.params.id]);
+    
     if (!rows.length) return res.status(404).json({ error: 'Parent non trouvé' });
     const parent = rows[0];
+    
     const [children] = await pool.query(`
       SELECT e.matricule, e.nom, e.prenom, e.photoURL,
         s.libelle AS salle, c.libelle AS classe, cy.libelle AS cycle
-      FROM Parents pr
-      JOIN Eleve e ON e.matricule = pr.matricule
+      FROM ParentEleve pe
+      JOIN Eleve e ON e.matricule = pe.matricule
       LEFT JOIN Frequente f ON f.matricule = e.matricule
       LEFT JOIN Salle s ON s.idSalle = f.idSalle
       LEFT JOIN Classe c ON c.idClasse = s.idClasse
       LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
-      WHERE pr.idPers = ?
+      WHERE pe.idPers = ?
       ORDER BY e.nom, e.prenom`, [parent.idPers]);
+    
     res.json({ ...parent, children, nbEnfants: children.length });
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
@@ -61,14 +53,11 @@ exports.createParent = async (req, res) => {
   try {
     const { nom, prenom, mobile, phone, matricule } = req.body;
     if (!nom || !prenom) return res.status(400).json({ error: 'Nom et prénom requis' });
-    if (!matricule) return res.status(400).json({ error: 'Matricule de l’enfant requis' });
+    
     const idAdmin = req.user?.id || 1000;
     const idPers = await getNextIdPers();
 
-    const [duplicate] = await pool.query('SELECT idParent FROM Parents WHERE matricule = ? LIMIT 1', [matricule]);
-    if (duplicate.length) return res.status(400).json({ error: 'Cet élève a déjà un parent enregistré' });
-
-    // Insert with all required fields - dateNaissance and lieuNaissance as empty defaults
+    // Insert parent person record
     await pool.query(
       `INSERT INTO Personne (idPers, nom, prenom, mobile, phone, typePersonne, dateNaissance, lieuNaissance, username, password, idAdmin, created_at)
        VALUES (?, ?, ?, ?, ?, 3, '2000-01-01', '', '', '1234', ?, NOW())`,
@@ -76,16 +65,24 @@ exports.createParent = async (req, res) => {
     );
 
     const [result] = await pool.query(
-      `INSERT INTO Parents (idPers, matricule, idAdmin, created_at) VALUES (?, ?, ?, NOW())`,
-      [idPers, matricule || null, idAdmin]
+      `INSERT INTO Parents (idPers, idAdmin, created_at) VALUES (?, ?, NOW())`,
+      [idPers, idAdmin]
     );
 
+    // If matricule provided, create parent-eleve link
+    if (matricule) {
+      const [eleve] = await pool.query('SELECT matricule FROM Eleve WHERE matricule = ?', [matricule]);
+      if (!eleve.length) return res.status(400).json({ error: 'Élève non trouvé' });
+      await pool.query(
+        'INSERT INTO ParentEleve (idPers, matricule) VALUES (?, ?)',
+        [idPers, matricule]
+      );
+    }
+
     const [rows] = await pool.query(`
-      SELECT pr.idParent, pr.matricule, p.idPers, p.nom, p.prenom, p.mobile, p.phone,
-        CASE WHEN COALESCE(pr.isDelete, 0) = 1 OR COALESCE(p.isDelete, 0) = 1 THEN 0 ELSE 1 END AS actif,
-        e.nom AS eleveNom, e.prenom AS elevePrenom
-      FROM Parents pr JOIN Personne p ON p.idPers = pr.idPers
-      LEFT JOIN Eleve e ON e.matricule = pr.matricule
+      SELECT pr.idParent, pr.idPers, p.nom, p.prenom, p.mobile, p.phone
+      FROM Parents pr
+      JOIN Personne p ON p.idPers = pr.idPers
       WHERE pr.idParent = ?`, [result.insertId]);
     res.status(201).json(rows[0]);
   } catch (error) {
@@ -99,36 +96,48 @@ exports.updateParent = async (req, res) => {
     const { nom, prenom, mobile, phone, matricule } = req.body;
     const [parent] = await pool.query('SELECT idPers FROM Parents WHERE idParent = ?', [req.params.id]);
     if (!parent.length) return res.status(404).json({ error: 'Parent non trouvé' });
+    
+    // Update personal info
     await pool.query(`UPDATE Personne SET nom=?, prenom=?, mobile=?, phone=? WHERE idPers=?`,
       [nom, prenom, mobile || '', phone || '', parent[0].idPers]);
-    if (matricule !== undefined) {
-      const [duplicate] = await pool.query('SELECT idParent FROM Parents WHERE matricule = ? AND idParent <> ? LIMIT 1', [matricule, req.params.id]);
-      if (duplicate.length) return res.status(400).json({ error: 'Cet élève a déjà un parent enregistré' });
-      await pool.query('UPDATE Parents SET matricule=? WHERE idParent=?', [matricule || null, req.params.id]);
+    
+    // Handle matricule - add/update parent-eleve link
+    if (matricule !== undefined && matricule) {
+      const [eleve] = await pool.query('SELECT matricule FROM Eleve WHERE matricule = ?', [matricule]);
+      if (!eleve.length) return res.status(400).json({ error: 'Élève non trouvé' });
+      
+      const [existing] = await pool.query(
+        'SELECT * FROM ParentEleve WHERE idPers = ? AND matricule = ?',
+        [parent[0].idPers, matricule]
+      );
+      
+      if (!existing.length) {
+        await pool.query(
+          'INSERT INTO ParentEleve (idPers, matricule) VALUES (?, ?)',
+          [parent[0].idPers, matricule]
+        );
+      }
     }
+    
     const [rows] = await pool.query(`
-      SELECT pr.idParent, pr.matricule, p.idPers, p.nom, p.prenom, p.mobile, p.phone,
-        CASE WHEN COALESCE(pr.isDelete, 0) = 1 OR COALESCE(p.isDelete, 0) = 1 THEN 0 ELSE 1 END AS actif,
-        e.nom AS eleveNom, e.prenom AS elevePrenom, e.matricule AS eleveMatricule,
-        s.libelle AS eleveSalle, c.libelle AS eleveClasse, cy.libelle AS eleveCycle
-      FROM Parents pr JOIN Personne p ON p.idPers = pr.idPers
-      LEFT JOIN Eleve e ON e.matricule = pr.matricule
-      LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe c ON c.idClasse = s.idClasse
-      LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
+      SELECT pr.idParent, pr.idPers, p.nom, p.prenom, p.mobile, p.phone,
+        CASE WHEN COALESCE(pr.isDelete, 0) = 1 OR COALESCE(p.isDelete, 0) = 1 THEN 0 ELSE 1 END AS actif
+      FROM Parents pr
+      JOIN Personne p ON p.idPers = pr.idPers
       WHERE pr.idParent = ?`, [req.params.id]);
+    
     const [children] = await pool.query(`
       SELECT e.matricule, e.nom, e.prenom, e.photoURL,
         s.libelle AS salle, c.libelle AS classe, cy.libelle AS cycle
-      FROM Parents pr
-      JOIN Eleve e ON e.matricule = pr.matricule
+      FROM ParentEleve pe
+      JOIN Eleve e ON e.matricule = pe.matricule
       LEFT JOIN Frequente f ON f.matricule = e.matricule
       LEFT JOIN Salle s ON s.idSalle = f.idSalle
       LEFT JOIN Classe c ON c.idClasse = s.idClasse
       LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
-      WHERE pr.idPers = ?
-      ORDER BY e.nom, e.prenom`, [rows[0].idPers]);
+      WHERE pe.idPers = ?
+      ORDER BY e.nom, e.prenom`, [parent[0].idPers]);
+    
     res.json({ ...rows[0], children, nbEnfants: children.length });
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
@@ -137,8 +146,16 @@ exports.deleteParent = async (req, res) => {
   try {
     const [parent] = await pool.query('SELECT idPers FROM Parents WHERE idParent = ?', [req.params.id]);
     if (!parent.length) return res.status(404).json({ error: 'Parent non trouvé' });
+    
+    // Delete parent-eleve links first
+    await pool.query('DELETE FROM ParentEleve WHERE idPers = ?', [parent[0].idPers]);
+    
+    // Delete parent record
     await pool.query('DELETE FROM Parents WHERE idParent = ?', [req.params.id]);
+    
+    // Delete person record
     await pool.query('DELETE FROM Personne WHERE idPers = ?', [parent[0].idPers]);
+    
     res.json({ message: 'Parent supprimé' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 };

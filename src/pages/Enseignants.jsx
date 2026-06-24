@@ -25,6 +25,7 @@ export default function Enseignants() {
   const [search, setSearch] = useState('');
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
+  const [detailError, setDetailError] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -101,11 +102,15 @@ export default function Enseignants() {
   );
 
   const openDetails = (en) => {
+    setDetailError('');
     setSelected({ ...en, _loadingDetail: true });
     setShowFiche(true);
     getEnseignantByIdAPI(en.idEnseignant)
       .then((res) => setSelected(res.data || en))
-      .catch(() => setSelected(en));
+      .catch((err) => {
+        setDetailError(err.response?.data?.error || err.message || 'Impossible de charger les détails');
+        setSelected(en);
+      });
   };
 
   return (
@@ -277,7 +282,7 @@ export default function Enseignants() {
       </div>
 
       {showFiche && selected && (
-        <EnseignantDetailsModal enseignant={selected} onClose={() => setShowFiche(false)} />
+        <EnseignantDetailsModal enseignant={selected} onClose={() => setShowFiche(false)} detailError={detailError} />
       )}
     </Layout>
   );
@@ -380,7 +385,25 @@ function CalendarMonth({ year, month, activeWeekdays = [] }) {
   );
 }
 
-function EnseignantDetailsModal({ enseignant, onClose }) {
+function EnseignantDetailsModal({ enseignant, onClose, detailError }) {
+  if (!enseignant) {
+    return null;
+  }
+
+  if (detailError) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.60)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+        <div style={{ width: '100%', maxWidth: 520, background: '#fff', borderRadius: 18, padding: 24, boxShadow: '0 30px 90px rgba(0,0,0,0.35)', textAlign: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#dc2626', marginBottom: 12 }}>❌ Erreur</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>{detailError}</div>
+          <button onClick={onClose} style={{ padding: '10px 20px', background: '#0062ff', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+            Fermer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const theme = useMemo(() => ({ blue: '#0062ff', orange: '#ffa000' }), []);
   const fullName = `${enseignant?.prenom || ''} ${enseignant?.nom || ''}`.trim() || '—';
   const classes = Array.isArray(enseignant?.classes) ? enseignant.classes : [];
@@ -404,6 +427,17 @@ function EnseignantDetailsModal({ enseignant, onClose }) {
   });
 
   const selectedClassList = view === 'classes' ? classes : salles;
+
+  if (enseignant._loadingDetail && !enseignant.classes && !enseignant.salles && !enseignant.cours) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.60)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+        <div style={{ width: '100%', maxWidth: 520, background: '#fff', borderRadius: 18, padding: 24, boxShadow: '0 30px 90px rgba(0,0,0,0.35)', textAlign: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginBottom: 12 }}>Chargement des détails...</div>
+          <div style={{ fontSize: 13, color: '#64748b' }}>Veuillez patienter pendant que les informations de l'enseignant se chargent.</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.60)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>

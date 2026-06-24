@@ -1,5 +1,6 @@
 const express = require('express');
 const auth = require('../middleware/auth');
+const { verifyAdmin } = auth;
 const pool = require('../database/db');
 
 const router = express.Router();
@@ -77,7 +78,46 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
+  try {
+    await ensureCoursColumns();
+
+    const { id } = req.params;
+    const [rows] = await pool.query(
+      `SELECT
+         c.idCours,
+         c.libelle,
+         c.idClasse,
+         c.idEnseignant,
+         c.heures,
+         c.idSalle,
+         cl.libelle AS classe,
+         s.libelle AS salle,
+         COALESCE(CONCAT(p.prenom, ' ', p.nom), CONCAT(p.nom, ' ', p.prenom)) AS enseignant,
+         COALESCE(nb.nbEleves, 0) AS nbEleves
+       FROM Cours c
+       LEFT JOIN Classe cl ON cl.idClasse = c.idClasse
+       LEFT JOIN Salle s ON s.idSalle = c.idSalle
+       LEFT JOIN Enseignant en ON (en.idEnseignant = c.idEnseignant) OR (en.idCours = c.idCours)
+       LEFT JOIN Personne p ON p.idPers = en.idPers
+       LEFT JOIN (
+         SELECT s2.idClasse, COUNT(DISTINCT f.matricule) AS nbEleves
+         FROM Salle s2
+         LEFT JOIN Frequente f ON f.idSalle = s2.idSalle
+         GROUP BY s2.idClasse
+       ) nb ON nb.idClasse = c.idClasse
+       WHERE c.idCours = ?`,
+      [id]
+    );
+
+    if (rows.length === 0) return res.status(404).json({ error: 'Cours non trouvé' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/', verifyAdmin, async (req, res) => {
   try {
     await ensureCoursColumns();
 
@@ -111,7 +151,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', verifyAdmin, async (req, res) => {
   try {
     await ensureCoursColumns();
 
@@ -142,7 +182,7 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', verifyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const cols = await getColumns('Cours');

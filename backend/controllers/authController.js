@@ -6,12 +6,23 @@ const config = require('../config');
 // LOGIN UNIFIÉ — cherche dans Admin ET Personne
 exports.login = async (req, res) => {
   try {
-    const { email, password, username } = req.body;
-    const credential = email || username;
+    const { email, password, username, login, credential: rawCredential } = req.body;
+    const credential = rawCredential || login || email || username;
     if (!credential || !password) return res.status(400).json({ error: 'Identifiant et mot de passe requis' });
 
     // 1. Chercher dans Admin
-    const [admins] = await pool.query('SELECT * FROM Admin WHERE login = ? AND actif = 1', [credential]);
+    let admins;
+    try {
+      console.log('DB: querying Admin for', credential);
+      [admins] = await pool.query(
+        'SELECT * FROM Admin WHERE (login = ? OR username = ?) AND actif = 1',
+        [credential, credential]
+      );
+      console.log('DB: Admin query returned', (admins && admins.length) || 0);
+    } catch (dbErr) {
+      console.error('DB query error (Admin):', dbErr && dbErr.message, dbErr);
+      return res.status(500).json({ error: 'Erreur base de données' });
+    }
     if (admins.length > 0) {
       const admin = admins[0];
       const ok = admin.password.startsWith('$2') ? await bcrypt.compare(password, admin.password) : password === admin.password;
@@ -23,7 +34,7 @@ exports.login = async (req, res) => {
     }
 
     // 2. Chercher dans Personne (enseignants et parents)
-    const [personnes] = await pool.query('SELECT * FROM Personne WHERE username = ?', [credential]);
+    const [personnes] = await pool.query('SELECT * FROM Personne WHERE username = ? OR login = ? LIMIT 1', [credential, credential]);
     if (personnes.length === 0) return res.status(401).json({ error: 'Utilisateur non trouvé' });
     const personne = personnes[0];
     const okP = personne.password.startsWith('$2') ? await bcrypt.compare(password, personne.password) : password === personne.password;

@@ -1,3 +1,4 @@
+const bcrypt = require('bcrypt');
 const pool = require('../database/db');
 const { getTableColumns, selectColumns } = require('../utils/schema');
 
@@ -59,14 +60,21 @@ async function buildTeacherDetail(enseignantRow) {
     ),
     pool.query(
       `SELECT
-        e.id, e.idSalle, e.idClasse, e.idProf, e.subject, e.dayOfWeek, e.startTime, e.endTime,
-        s.libelle AS salle, cl.libelle AS classe
+        e.idTemps AS id,
+        e.idClasse,
+        e.idCours,
+        e.idAdmin,
+        e.jour AS dayOfWeek,
+        e.heure AS startTime,
+        NULL AS endTime,
+        s.libelle AS salle,
+        cl.libelle AS classe
        FROM EmploiDuTemps e
        LEFT JOIN Salle s ON s.idSalle = e.idSalle
        LEFT JOIN Classe cl ON cl.idClasse = e.idClasse
-       WHERE e.idProf = ?
-       ORDER BY e.dayOfWeek, e.startTime`,
-      [teacherId]
+       WHERE e.idCours = ?
+       ORDER BY e.jour, e.heure`,
+      [teacherCourseId]
     )
   ]);
 
@@ -189,7 +197,13 @@ exports.createEnseignant = async (req, res) => {
     const idAdmin = req.user?.id || 1;
     const idPers = await getNextIdPers();
     const pwd = password || '1234';
+    const hashedPassword = await bcrypt.hash(pwd, 10);
     const uname = username || `${prenom.toLowerCase().replace(/[^a-z]/g, '')}.${nom.toLowerCase().replace(/[^a-z]/g, '')}`;
+
+    const [userExists] = await pool.query('SELECT idPers FROM Personne WHERE username = ? LIMIT 1', [uname]);
+    if (userExists.length > 0) {
+      return res.status(400).json({ error: 'Nom d’utilisateur déjà utilisé' });
+    }
 
     const [coursFallback] = await pool.query('SELECT idCours FROM Cours ORDER BY idCours ASC LIMIT 1');
     const resolvedIdCours = idCours || coursFallback[0]?.idCours || null;
@@ -201,7 +215,7 @@ exports.createEnseignant = async (req, res) => {
     await pool.query(
       `INSERT INTO Personne (idPers, nom, prenom, mobile, phone, username, password, dateNaissance, lieuNaissance, typePersonne, idAdmin, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, '2000-01-01'), ?, 2, ?, NOW())`,
-      [idPers, nom, prenom, mobile || '', phone || '', uname, pwd, dateNaissance || null, lieuNaissance || '', idAdmin]
+      [idPers, nom, prenom, mobile || '', phone || '', uname, hashedPassword, dateNaissance || null, lieuNaissance || '', idAdmin]
     );
 
     const photoCol = await resolveEnseignantPhotoColumn();
@@ -237,26 +251,47 @@ exports.createEnseignant = async (req, res) => {
 
 exports.updateEnseignant = async (req, res) => {
   try {
-    const { nom, prenom, mobile, phone, username, idCours, Actif, photoURL } = req.body;
+    const { nom, prenom, mobile, phone, username, idCours, Actif, photoURL, password } = req.body;
     const [ens] = await pool.query('SELECT idPers FROM Enseignant WHERE idEnseignant = ?', [req.params.id]);
     if (!ens.length) return res.status(404).json({ error: 'Enseignant non trouvé' });
 
-    await pool.query(
-      `UPDATE Personne SET nom=?, prenom=?, mobile=?, phone=?, username=? WHERE idPers=?`,
-      [nom, prenom, mobile || '', phone || '', username || '', ens[0].idPers]
-    );
-
-    const photoCol = await resolveEnseignantPhotoColumn();
     const updates = [];
-    const vals = [];
+    const values = [];
 
-    if (idCours !== undefined) { updates.push('idCours=?'); vals.push(idCours || null); }
-    if (Actif !== undefined) { updates.push('Actif=?'); vals.push(Actif); }
-    if (photoCol && photoURL !== undefined) { updates.push(`${photoCol}=?`); vals.push(photoURL || null); }
+    if (nom !== undefined) { updates.push('nom=?'); values.push(nom); }
+    if (prenom !== undefined) { updates.push('prenom=?'); values.push(prenom); }
+    if (mobile !== undefined) { updates.push('mobile=?'); values.push(mobile || ''); }
+    if (phone !== undefined) { updates.push('phone=?'); values.push(phone || ''); }
+    if (username !== undefined) {
+      const [userExists] = await pool.query('SELECT idPers FROM Personne WHERE username = ? AND idPers != ? LIMIT 1', [username, ens[0].idPers]);
+      if (userExists.length > 0) {
+        return res.status(400).json({ error: 'Nom d’utilisateur déjà utilisé' });
+      }
+      updates.push('username=?');
+      values.push(username);
+    }
+    if (password !== undefined) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updates.push('password=?');
+      values.push(hashedPassword);
+    }
 
     if (updates.length) {
-      vals.push(req.params.id);
-      await pool.query(`UPDATE Enseignant SET ${updates.join(', ')} WHERE idEnseignant=?`, vals);
+      values.push(ens[0].idPers);
+      await pool.query(`UPDATE Personne SET ${updates.join(', ')} WHERE idPers=?`, values);
+    }
+
+    const photoCol = await resolveEnseignantPhotoColumn();
+    const enseignantUpdates = [];
+    const enseignantValues = [];
+
+    if (idCours !== undefined) { enseignantUpdates.push('idCours=?'); enseignantValues.push(idCours || null); }
+    if (Actif !== undefined) { enseignantUpdates.push('Actif=?'); enseignantValues.push(Actif); }
+    if (photoCol && photoURL !== undefined) { enseignantUpdates.push(`${photoCol}=?`); enseignantValues.push(photoURL || null); }
+
+    if (enseignantUpdates.length) {
+      enseignantValues.push(req.params.id);
+      await pool.query(`UPDATE Enseignant SET ${enseignantUpdates.join(', ')} WHERE idEnseignant=?`, enseignantValues);
     }
 
     const personneCols = await resolvePersonneColumns();
@@ -279,6 +314,26 @@ exports.deleteEnseignant = async (req, res) => {
   try {
     await pool.query('UPDATE Enseignant SET Actif = 0 WHERE idEnseignant = ?', [req.params.id]);
     res.json({ message: 'Enseignant désactivé' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getCurrentEnseignant = async (req, res) => {
+  try {
+    const enseignantId = req.user?.idEnseignant;
+    if (!enseignantId) return res.status(403).json({ error: 'Aucun identifiant enseignant dans le token' });
+
+    const [rows] = await pool.query(
+      `SELECT en.*, p.nom, p.prenom, p.username, p.email, p.mobile, p.phone, p.dateNaissance, p.lieuNaissance
+       FROM Enseignant en
+       LEFT JOIN Personne p ON p.idPers = en.idPers
+       WHERE en.idEnseignant = ?`,
+      [enseignantId]
+    );
+
+    if (!rows.length) return res.status(404).json({ error: 'Enseignant introuvable' });
+    res.json(await buildTeacherDetail(rows[0]));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

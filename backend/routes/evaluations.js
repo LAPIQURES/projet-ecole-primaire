@@ -1,5 +1,5 @@
 const express = require('express');
-const auth = require('../middleware/auth');
+const { verifyEnseignant } = require('../middleware/auth');
 const pool = require('../database/db');
 const router = express.Router();
 const socketHelper = require('../socket');
@@ -13,7 +13,7 @@ async function getTableColumns(tableName) {
 }
 
 // List recent evaluations
-router.get('/', auth, async (req, res) => {
+router.get('/', verifyEnseignant, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT ev.idEval, ev.matricule, ev.note, ev.appreciation, ev.created_at,
@@ -28,10 +28,16 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Create evaluation
-router.post('/', auth, async (req, res) => {
+router.post('/', verifyEnseignant, async (req, res) => {
   try {
     const { matricule, idCours, note, appreciation } = req.body;
     if (!matricule || !idCours) return res.status(400).json({ error: 'Matricule et idCours requis' });
+
+    const parsedNote = Number(note);
+    if (Number.isNaN(parsedNote) || parsedNote < 0 || parsedNote > 20) {
+      return res.status(400).json({ error: 'La note doit être un nombre entre 0 et 20' });
+    }
+
     const idAdmin = req.user?.id || 1000;
     const cols = await getTableColumns('Evaluation');
     const insertCols = [];
@@ -40,7 +46,7 @@ router.post('/', auth, async (req, res) => {
     const addIf = (name, val) => { if (cols.includes(name)) { insertCols.push(name); placeholders.push('?'); values.push(val); } };
     addIf('matricule', matricule);
     addIf('idCours', idCours);
-    addIf('note', note || 0);
+    addIf('note', parsedNote);
     addIf('appreciation', appreciation || '');
     addIf('idAdmin', idAdmin);
     if (cols.includes('created_at')) { insertCols.push('created_at'); placeholders.push('NOW()'); }

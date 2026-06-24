@@ -5,6 +5,7 @@ import { Home, BookOpen, Users, FileText, Calendar, MessageSquare, Settings, Log
 const teacherMenu = [
   { name: 'Tableau de bord', icon: Home, path: '/enseignant/dashboard' },
   { name: 'Mes cours', icon: BookOpen, path: '/enseignant/cours' },
+  { name: 'Cahier d\'appel', icon: FileText, path: '/enseignant/cahier-appel' },
   { name: 'Mes élèves', icon: Users, path: '/enseignant/eleves' },
   { name: 'Évaluations', icon: FileText, path: '/enseignant/evaluations' },
   { name: 'Emploi du temps', icon: Calendar, path: '/enseignant/emploi-du-temps' },

@@ -175,3 +175,104 @@ exports.createRapport = async (req, res) => {
     res.status(201).json({ idRap: result.insertId, message: 'Rapport créé' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
+
+// Get real parents of a student from ParentEleve table
+exports.getEleveParents = async (req, res) => {
+  try {
+    const { matricule } = req.params;
+    const [rows] = await pool.query(`
+      SELECT 
+        pe.idParentEleve,
+        pe.idPers,
+        p.nom,
+        p.prenom,
+        p.mobile,
+        p.phone,
+        p.typePersonne
+      FROM ParentEleve pe
+      JOIN Personne p ON p.idPers = pe.idPers
+      WHERE pe.matricule = ? AND COALESCE(p.isDelete, 0) = 0
+      ORDER BY p.nom, p.prenom
+    `, [matricule]);
+    res.json(rows);
+  } catch (error) {
+    console.error('getEleveParents error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get attendance data for student filtered by month
+exports.getEleveAttendance = async (req, res) => {
+  try {
+    const { matricule } = req.params;
+    const { month } = req.query; // Format: YYYY-MM
+    
+    let query = `
+      SELECT 
+        f.idFrequente,
+        f.matricule,
+        f.created_at,
+        f.commentaire,
+        s.libelle AS salle,
+        CASE 
+          WHEN f.commentaire LIKE '%absent%' OR f.commentaire LIKE '%Absent%' THEN 'Absent'
+          WHEN f.commentaire = 'RAS' THEN 'Présent'
+          ELSE 'Présent'
+        END AS status,
+        DATE_FORMAT(f.created_at, '%Y-%m-%d') AS date
+      FROM Frequente f
+      LEFT JOIN Salle s ON s.idSalle = f.idSalle
+      WHERE f.matricule = ?
+    `;
+    
+    const params = [matricule];
+    
+    if (month) {
+      query += ` AND DATE_FORMAT(f.created_at, '%Y-%m') = ?`;
+      params.push(month);
+    }
+    
+    query += ` ORDER BY f.created_at DESC`;
+    
+    const [rows] = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error('getEleveAttendance error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Mark attendance for a student (teacher attendance register)
+exports.markAttendance = async (req, res) => {
+  try {
+    const { matricule, idSalle, commentaire } = req.body;
+    const idAdmin = req.user?.id || 1000;
+    
+    if (!matricule || !idSalle) {
+      return res.status(400).json({ error: 'matricule et idSalle requis' });
+    }
+    
+    // Convert matricule to integer (handle both string and number)
+    const matriculeInt = typeof matricule === 'string' 
+      ? parseInt(matricule.replace(/\D/g, '')) || parseInt(matricule)
+      : parseInt(matricule);
+    const idSalleInt = parseInt(idSalle);
+    
+    // Default idAcademi to 10 (most common based on DB)
+    const idAcademi = 10;
+    
+    const [result] = await pool.query(`
+      INSERT INTO Frequente (matricule, idSalle, idAcademi, commentaire, idAdmin, created_at)
+      VALUES (?, ?, ?, ?, ?, NOW())
+    `, [matriculeInt, idSalleInt, idAcademi, commentaire || 'RAS', idAdmin]);
+    
+    res.status(201).json({
+      idFrequente: result.insertId,
+      message: 'Présence enregistrée',
+      status: commentaire?.includes('absent') ? 'Absent' : 'Présent'
+    });
+  } catch (error) {
+    console.error('markAttendance error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};

@@ -5,7 +5,7 @@ import { loginAPI } from '../services/api'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [credential, setCredential] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
@@ -17,13 +17,14 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    if (!email || !password) { setError('Veuillez remplir tous les champs'); return }
+    const trimmedCredential = credential.trim()
+    if (!trimmedCredential || !password) { setError('Veuillez remplir tous les champs'); return }
     setIsLoading(true); setError('')
     try {
-      const res = await loginAPI(email, password)
+      const res = await loginAPI(trimmedCredential, password)
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))
-      if (rememberMe) localStorage.setItem('email', email)
+      if (rememberMe) localStorage.setItem('email', trimmedCredential)
       setSuccessMessage('Connexion réussie ! Redirection...')
         setTimeout(() => {
         const r = res.data.user?.role || 'admin'
@@ -45,7 +46,7 @@ export default function Login() {
     setTimeout(() => { setShowForgotPassword(false); setForgotEmail(''); setSuccessMessage('') }, 3000)
   }
 
-  const placeholder = 'Nom d\'utilisateur, email ou matricule'
+  const placeholder = "Identifiant administrateur, login ou matricule"
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#eef2f7', fontFamily: "'Segoe UI', sans-serif", overflow: 'hidden' }}>
@@ -130,10 +131,10 @@ export default function Login() {
             {!showForgotPassword ? (
               <>
                 <h2 style={{ fontSize: '19px', fontWeight: '700', color: '#0f172a', marginBottom: '3px' }}>
-                  Connexion automatique au bon espace
+                  Portail de connexion administrateur
                 </h2>
                 <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px', lineHeight: 1.5 }}>
-                  L'application détecte votre profil avec votre identifiant et votre mot de passe, puis vous dirige vers le tableau de bord correspondant.
+                  Connectez-vous avec votre compte administrateur pour accéder aux tableaux de bord et aux outils de gestion scolaire.
                 </p>
 
                 {error && (
@@ -152,12 +153,12 @@ export default function Login() {
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
                     <label style={{ fontSize: '12px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '5px' }}>
-                      Nom d'utilisateur ou matricule
+                      Identifiant administrateur ou matricule
                     </label>
                     <div style={{ position: 'relative' }}>
                       <Mail size={15} color="#94a3b8" style={{ position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)' }} />
-                      <input className={`inp ${error ? 'error' : ''}`} type="text" value={email}
-                        onChange={e => { setEmail(e.target.value); setError('') }} placeholder={placeholder} />
+                      <input className={`inp ${error ? 'error' : ''}`} type="text" value={credential}
+                        onChange={e => { setCredential(e.target.value); setError('') }} placeholder={placeholder} />
                     </div>
                   </div>
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 const eleveRoutes = require('./routes/eleves');
 const classRoutes = require('./routes/classes');
 const enseignantRoutes = require('./routes/enseignants');
@@ -24,6 +25,9 @@ const parametresRoutes = require('./routes/parametres');
 const debugRoutes = require('./routes/debug');
 const bulletinsRoutes = require('./routes/bulletins');
 const disciplineRoutes = require('./routes/discipline');
+const postesRoutes = require('./routes/postes');
+const fonctionsRoutes = require('./routes/fonctions');
+const personnelRoutes = require('./routes/personnel');
 
 const http = require('http');
 const app = express();
@@ -40,6 +44,7 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/eleves', eleveRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/enseignants', enseignantRoutes);
@@ -63,6 +68,9 @@ app.use('/api/parametres', parametresRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/bulletins', bulletinsRoutes);
 app.use('/api/discipline', disciplineRoutes);
+app.use('/api/postes', postesRoutes);
+app.use('/api/fonctions', fonctionsRoutes);
+app.use('/api/personnel', personnelRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -234,3 +234,69 @@ exports.deleteBulletin = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Générer HTML imprimable pour tous les bulletins d'une classe/salle pour une année/trimestre
+exports.generateClassBulletins = async (req, res) => {
+  try {
+    const { idClasse, idSalle, idAnnee, idTrimes } = req.body;
+    if (!idAnnee || !idTrimes || (!idClasse && !idSalle)) {
+      return res.status(400).json({ error: 'idAnnee, idTrimes et idClasse ou idSalle requis' });
+    }
+
+    // Trouver les matricules des élèves dans la classe/salle
+    const params = [idAnnee];
+    let whereJoin = '';
+    if (idSalle) {
+      whereJoin = 'WHERE f.idSalle = ? AND f.idAcademi = ?';
+      params.unshift(idSalle); // [idSalle, idAnnee]
+    } else {
+      whereJoin = 'WHERE s.idClasse = ? AND f.idAcademi = ?';
+      params.unshift(idClasse);
+    }
+
+    const [eleves] = await pool.query(
+      `SELECT DISTINCT e.matricule, e.nom, e.prenom
+       FROM Eleve e
+       LEFT JOIN Frequente f ON f.matricule = e.matricule
+       LEFT JOIN Salle s ON s.idSalle = f.idSalle
+       ${whereJoin}
+       ORDER BY e.nom, e.prenom`, params
+    );
+
+    if (!eleves || eleves.length === 0) return res.status(404).json({ error: 'Aucun élève trouvé pour la sélection' });
+
+    // Pour chaque élève, récupérer évaluations pour le trimestre et construire un simple bulletin HTML
+    let html = `<!doctype html><html><head><meta charset="utf-8"><title>Bulletins</title><style>body{font-family:Arial,Helvetica,sans-serif} .bulletin{page-break-after:always;border:1px solid #ccc;padding:16px;margin:12px}</style></head><body>`;
+
+    for (const el of eleves) {
+      const [evaluations] = await pool.query(
+        `SELECT ev.note, ev.appreciation, c.libelle AS cours
+         FROM Evaluation ev
+         LEFT JOIN Cours c ON c.idCours = ev.idCours
+         LEFT JOIN Session s ON s.idSession = ev.idSession
+         LEFT JOIN Trimestre t ON t.idTrimes = s.idTrimestre
+         WHERE ev.matricule = ? AND t.idTrimes = ?`,
+        [el.matricule, idTrimes]
+      );
+
+      const notes = evaluations.map(e => Number(e.note) || 0).filter(n => n > 0);
+      const moyenne = notes.length ? (notes.reduce((a,b)=>a+b,0)/notes.length).toFixed(2) : '0.00';
+
+      html += `<div class="bulletin"><h2>Bulletin - ${el.prenom} ${el.nom} (${el.matricule})</h2>`;
+      html += `<p>Année: ${idAnnee} — Trimestre: ${idTrimes}</p>`;
+      html += `<table border="1" cellspacing="0" cellpadding="6"><thead><tr><th>Cours</th><th>Note</th><th>Appréciation</th></tr></thead><tbody>`;
+      evaluations.forEach(ev => {
+        html += `<tr><td>${ev.cours || ''}</td><td>${ev.note ?? ''}</td><td>${ev.appreciation || ''}</td></tr>`;
+      });
+      html += `</tbody></table><p>Moyenne: <strong>${moyenne}</strong></p></div>`;
+    }
+
+    html += `</body></html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(html);
+  } catch (error) {
+    console.error('generateClassBulletins error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+};

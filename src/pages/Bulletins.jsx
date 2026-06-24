@@ -16,6 +16,8 @@ const Bulletins = () => {
   });
   const [annees, setAnnees] = useState([]);
   const [trimestres, setTrimestres] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [salles, setSalles] = useState([]);
   const [eleves, setEleves] = useState([]);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -23,13 +25,20 @@ const Bulletins = () => {
   useEffect(() => {
     loadEleves();
     loadAnnees();
+    loadClassesAndSalles();
   }, []);
 
   const loadEleves = async () => {
     try {
-      const response = await fetch('/api/eleves');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/eleves', token ? { headers: { 'Authorization': `Bearer ${token}` } } : {});
       const data = await response.json();
-      setEleves(data);
+      if (!response.ok) {
+        setError(data.error || 'Erreur chargement des élèves');
+        setEleves([]);
+        return;
+      }
+      setEleves(Array.isArray(data) ? data : (data.eleves || []));
     } catch (error) {
       console.error('Erreur chargement élèves:', error);
       setError('Erreur chargement des élèves');
@@ -38,7 +47,10 @@ const Bulletins = () => {
 
   const loadAnnees = async () => {
     try {
-      const response = await fetch('/api/years');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/years', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const data = await response.json();
       setAnnees(data.annees || data || []);
       setTrimestres(data.trimestres || []);
@@ -47,11 +59,28 @@ const Bulletins = () => {
     }
   };
 
+  const loadClassesAndSalles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const resC = await fetch('/api/classes', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const classesData = await resC.json();
+      setClasses(classesData || []);
+      const resS = await fetch('/api/salles', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const sallesData = await resS.json();
+      setSalles(sallesData || []);
+    } catch (err) {
+      console.error('Erreur chargement classes/salles', err);
+    }
+  };
+
   const handleEleveSelect = async (matricule) => {
     setSelectedEleve(matricule);
     setLoading(true);
     try {
-      const response = await fetch(`/api/bulletins/eleve/${matricule}`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/bulletins/eleve/${matricule}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const data = await response.json();
       setBulletins(data);
     } catch (error) {
@@ -63,7 +92,10 @@ const Bulletins = () => {
   const handleViewBulletin = async (idBulletin) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/bulletins/${idBulletin}`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/bulletins/${idBulletin}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const data = await response.json();
       setBulletinDetail(data);
       setSelectedBulletin(idBulletin);
@@ -83,9 +115,13 @@ const Bulletins = () => {
     setError('');
     setLoading(true);
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/bulletins/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify(formData)
       });
       const data = await response.json();
@@ -104,11 +140,49 @@ const Bulletins = () => {
     setLoading(false);
   };
 
+  const handlePrintClass = async () => {
+    try {
+      if (!formData.idAnnee || !formData.idTrimes || (!formData.idClasse && !formData.idSalle)) {
+        setError('Sélectionnez année, trimestre et une classe ou une salle');
+        return;
+      }
+      setError('');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/bulletins/generate-class', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ idClasse: formData.idClasse || null, idSalle: formData.idSalle || null, idAnnee: formData.idAnnee, idTrimes: formData.idTrimes })
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        setError(err.error || 'Erreur génération bulletins');
+        return;
+      }
+
+      const html = await response.text();
+      const w = window.open('', '_blank');
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+    } catch (err) {
+      console.error('Erreur impression classe', err);
+      setError('Erreur impression classe');
+    }
+  };
+
   const handlePublishBulletin = async (idBulletin, statut) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`/api/bulletins/${idBulletin}/publish`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ statut })
       });
       if (response.ok) {
@@ -125,8 +199,10 @@ const Bulletins = () => {
   const handleDeleteBulletin = async (idBulletin) => {
     if (!window.confirm('Confirmer la suppression?')) return;
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`/api/bulletins/${idBulletin}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (response.ok) {
         setSuccess('Bulletin supprimé');
@@ -267,6 +343,52 @@ const Bulletins = () => {
                     <option key={trimestre.idTrimes} value={trimestre.idTrimes}>
                       {trimestre.libelle}
                     </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  Classe
+                </label>
+                <select
+                  value={formData.idClasse || ''}
+                  onChange={(e) => setFormData({ ...formData, idClasse: e.target.value, idSalle: '' })}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="">-- Sélectionner --</option>
+                  {classes.map((cl) => (
+                    <option key={cl.idClasse} value={cl.idClasse}>{cl.libelle}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  Salle
+                </label>
+                <select
+                  value={formData.idSalle || ''}
+                  onChange={(e) => setFormData({ ...formData, idSalle: e.target.value, idClasse: '' })}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <option value="">-- Sélectionner --</option>
+                  {salles.map((s) => (
+                    <option key={s.idSalle} value={s.idSalle}>{s.libelle} ({s.idClasse || '—'})</option>
                   ))}
                 </select>
               </div>
