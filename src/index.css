@@ -1,0 +1,52 @@
+/* Tailwind v4 directives */
+@import "tailwindcss";
+
+/* Styles globaux */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary: #0062ff;
+  --secondary: #ffa000;
+  --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+  --bg-soft: #f3f7ff;
+  --surface: #ffffff;
+  --muted: #64748b;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-soft);
+  color: #0f172a;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Buttons and accents */
+.btn { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .75rem; border-radius: .5rem; cursor: pointer; border: 1px solid transparent; }
+.btn-primary { background: var(--primary); color: white; box-shadow: 0 1px 2px rgba(2,6,23,0.08); }
+.btn-ghost { background: transparent; color: var(--primary); border-color: rgba(2,6,23,0.06); }
+
+/* Links */
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Ensure nav is fixed and no borders by default */
+nav, .nav-list { border: none !important; }
+
+/* Card utility for consistent rounded cards */
+.card { background: var(--surface); border-radius: 1rem; box-shadow: 0 6px 20px rgba(2,6,23,0.06); border: none; }
+
+/* Apply subtle global surface look to typical panels */
+.panel { background: var(--surface); border-radius: 1rem; padding: 1rem; box-shadow: 0 4px 18px rgba(2,6,23,0.04); }
+
+/* Accent colors */
+.text-primary { color: var(--primary); }
+.bg-primary { background: var(--primary); color: white; }
