@@ -3,26 +3,26 @@ const pool = require('../database/db');
 
 async function createAdmin() {
   try {
-    const login = 'jude';
+    const username = 'jude';
     const password = '1234';
     const typeAdmin = 2; // admin
     const actif = 1;
 
     const bcryptPwd = await bcrypt.hash(password, 10);
-    const [existing] = await pool.query('SELECT * FROM Admin WHERE login = ?', [login]);
+    const [existing] = await pool.query('SELECT * FROM Admin WHERE username = ?', [username]);
 
     if (existing.length > 0) {
       await pool.query(
-        'UPDATE Admin SET password = ?, typeAdmin = ?, actif = ?, isDelete = 0, updatedAt = NOW() WHERE login = ?',
-        [bcryptPwd, typeAdmin, actif, login]
+        'UPDATE Admin SET nom = ?, password = ?, typeAdmin = ?, actif = ?, isDelete = 0, createdAt = NOW(), updatedAt = NOW(), langue = ?, created_at = NOW() WHERE username = ?',
+        ['Jude', bcryptPwd, typeAdmin, actif, 'fr', username]
       );
-      console.log(`✅ Administrateur existant mis à jour : ${login}`);
+      console.log(`✅ Administrateur existant mis à jour : ${username}`);
     } else {
       await pool.query(
-        'INSERT INTO Admin (login, password, typeAdmin, actif, isDelete, createdAt, updatedAt, langue) VALUES (?, ?, ?, ?, 0, NOW(), NOW(), ?)',
-        [login, bcryptPwd, typeAdmin, actif, 'fr']
+        'INSERT INTO Admin (nom, username, password, actif, typeAdmin, mobile, isDelete, createdAt, updatedAt, langue, created_at) VALUES (?, ?, ?, ?, ?, ?, 0, NOW(), NOW(), ?, NOW())',
+        ['Jude', username, bcryptPwd, actif, typeAdmin, '', 'fr']
       );
-      console.log(`✅ Administrateur créé : ${login}`);
+      console.log(`✅ Administrateur créé : ${username}`);
     }
 
     process.exit(0);
