@@ -138,7 +138,7 @@ exports.getAbsenceData = async (req, res) => {
           WHEN f.commentaire LIKE '%absent%' OR f.commentaire LIKE '%Absent%' THEN 'Absent'
           ELSE 'Présent'
         END AS status,
-        DATE_FORMAT(f.created_at, '%Y-%m-%d') AS date,
+        COALESCE(DATE_FORMAT(f.created_at, '%Y-%m-%d'), DATE_FORMAT(CURRENT_DATE, '%Y-%m-%d')) AS date,
         MONTH(f.created_at) AS mois,
         YEAR(f.created_at) AS annee
       FROM Frequente f

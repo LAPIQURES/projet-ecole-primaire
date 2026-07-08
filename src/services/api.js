@@ -45,6 +45,14 @@ export const updateEleveAPI = (id, data) => API.put(`/eleves/${id}`, data);
 export const deleteEleveAPI = (id) => API.delete(`/eleves/${id}`);
 export const reactivateEleveAPI = (id) => API.post(`/eleves/${id}/reactivate`);
 
+// Bulletins
+export const getBulletinsByEleveAPI = (matricule) => API.get(`/bulletins/eleve/${matricule}`);
+export const getBulletinDetailAPI = (id) => API.get(`/bulletins/${id}`);
+export const createBulletinAPI = (data) => API.post('/bulletins/create', data);
+export const publishBulletinAPI = (id, statut) => API.post(`/bulletins/${id}/publish`, { statut });
+export const deleteBulletinAPI = (id) => API.delete(`/bulletins/${id}`);
+export const generateClassBulletinsAPI = (data) => API.post('/bulletins/generate-class', data, { responseType: 'text' });
+
 // Classes
 export const getClassesAPI = () => API.get('/classes');
 export const getClassByIdAPI = (id) => API.get(`/classes/${id}`);
@@ -60,6 +68,11 @@ export const deleteCoursAPI = (id) => API.delete(`/cours/${id}`);
 
 // Enseignants
 export const getEnseignantsAPI = () => API.get('/enseignants');
+export const getCurrentEnseignantAPI = () => API.get('/enseignants/me');
+export const getTeacherCoursesAPI = () => API.get('/enseignants/me/courses');
+export const getTeacherScheduleAPI = () => API.get('/enseignants/me/schedule');
+export const getTeacherStudentsAPI = () => API.get('/enseignants/me/students');
+export const getTeacherClassesSallesAPI = () => API.get('/enseignants/me/classes-salles');
 export const getEnseignantByIdAPI = (id) => API.get(`/enseignants/${id}`);
 export const createEnseignantAPI = (data) => API.post('/enseignants', data);
 export const updateEnseignantAPI = (id, data) => API.put(`/enseignants/${id}`, data);

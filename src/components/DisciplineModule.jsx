@@ -83,8 +83,14 @@ export default function DisciplineModule() {
 
   return (
     <div style={s.page}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'28px' }}>
-        <h1 style={{ fontSize:'24px', fontWeight:'700', color:'#0f172a', margin:0 }}>⚠️ Module Discipline - Absences</h1>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'28px', gap:'16px', flexWrap:'wrap' }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize:'24px', fontWeight:'700', color:'#0f172a', margin:0 }}>⚠️ Module Discipline - Absences</h1>
+          <p style={{ margin:'8px 0 0', color:'#475569', fontSize:'14px', maxWidth:'760px' }}>
+            Cette page affiche uniquement les absences et les problèmes de discipline.
+            Les notes et évaluations enregistrées sont consultables dans <strong>Notes & Bulletins</strong>.
+          </p>
+        </div>
         <button style={s.btn('secondary')} onClick={() => window.print()}><Download size={16} /> Exporter</button>
       </div>
 

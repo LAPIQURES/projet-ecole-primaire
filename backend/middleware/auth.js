@@ -32,6 +32,7 @@ const auth = (req, res, next) => {
 };
 
 module.exports = auth;
+module.exports.auth = auth;
 module.exports.verifyToken = auth;
 
 // Verify admin role
@@ -58,12 +59,15 @@ const verifyEnseignant = (req, res, next) => {
       const persId = Number(idPers) || null;
       if (!persId) return res.status(401).json({ error: 'Token invalide (idPers manquant)' });
 
-      const [rows] = await pool.query('SELECT e.idEnseignant, e.Actif FROM Enseignant e WHERE e.idPers = ? LIMIT 1', [persId]);
+      const [rows] = await pool.query('SELECT e.idEnseignant, e.idCours, e.Actif FROM Enseignant e WHERE e.idPers = ? LIMIT 1', [persId]);
       if (!rows || rows.length === 0) return res.status(403).json({ error: 'Compte enseignant introuvable' });
       const enseignant = rows[0];
       if (!enseignant.Actif || Number(enseignant.Actif) === 0) return res.status(403).json({ error: 'Compte désactivé' });
 
       req.user.idEnseignant = enseignant.idEnseignant;
+      if (enseignant.idCours !== undefined && enseignant.idCours !== null) {
+        req.user.idCours = enseignant.idCours;
+      }
       next();
     } catch (err) {
       console.error('verifyEnseignant error:', err && err.message ? err.message : err);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Calendar, Save, Printer, Search, ChevronDown } from 'lucide-react';
-import API from '../services/api';
+import API, { getTeacherStudentsAPI } from '../services/api';
 
 const s = {
   page: { background:'#f8fafc', minHeight:'100vh', padding:'24px', fontFamily:"'Segoe UI',sans-serif" },
@@ -35,36 +35,43 @@ export default function TeacherAttendanceRegister() {
 
   const loadClasses = async () => {
     try {
-      const response = await API.get('/api/salles');
-      setClasses(response.data || []);
+      const response = await API.get('/enseignants/me/classes-salles');
+      const teacherClasses = Array.isArray(response.data?.classes) ? response.data.classes : [];
+      setClasses(teacherClasses);
     } catch (error) {
       console.error('Error loading classes:', error);
     }
   };
 
-  const loadStudents = async (idSalle) => {
+  const loadStudents = async (idClasse) => {
     try {
-      // Get students in this class
-      const response = await API.get(`/api/eleves?salle=${idSalle}`);
-      const classStudents = response.data || [];
+      const response = await getTeacherStudentsAPI();
+      const allStudents = Array.isArray(response.data) ? response.data : [];
+      const selectedClass = classes.find((c) => String(c.idClasse) === String(idClasse));
+      const classStudents = selectedClass
+        ? allStudents.filter((s) => String(s.idClasse) === String(idClasse) || String(s.classe) === String(selectedClass.libelle))
+        : allStudents;
       setStudents(classStudents);
-      
-      // Initialize attendance status
       const init = {};
-      classStudents.forEach(s => {
-        init[s.matricule] = 'present'; // default: present
+      classStudents.forEach((s) => {
+        init[s.matricule] = 'present';
       });
       setAttendance(init);
     } catch (error) {
       console.error('Error loading students:', error);
+      setStudents([]);
+      setAttendance({});
     }
   };
 
   const handleClassChange = (e) => {
-    const idSalle = e.target.value;
-    setSelectedClass(idSalle);
-    if (idSalle) {
-      loadStudents(idSalle);
+    const idClasse = e.target.value;
+    setSelectedClass(idClasse);
+    if (idClasse) {
+      loadStudents(idClasse);
+    } else {
+      setStudents([]);
+      setAttendance({});
     }
   };
 
@@ -77,21 +84,27 @@ export default function TeacherAttendanceRegister() {
   };
 
   const saveAttendance = async () => {
+    if (!selectedClass || students.length === 0) {
+      alert('Sélectionnez une classe avec des élèves');
+      return;
+    }
+
     setLoading(true);
     try {
-      for (const matricule of Object.keys(attendance)) {
-        const status = attendance[matricule];
-        await API.post('/api/eleves/mark-attendance', {
+      const entries = Object.entries(attendance);
+      for (const [matricule, status] of entries) {
+        await API.post('/eleves/mark-attendance', {
           matricule,
-          idSalle: parseInt(selectedClass),
-          commentaire: status === 'absent' ? 'Absent' : 'RAS'
+          commentaire: status === 'absent' ? 'Absent' : 'RAS',
+          date: date || new Date().toISOString().split('T')[0],
         });
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
       console.error('Error saving attendance:', error);
-      alert('Erreur lors de l\'enregistrement');
+      const apiError = error?.response?.data?.error || error.message || 'Erreur lors de l\'enregistrement';
+      alert(apiError);
     } finally {
       setLoading(false);
     }
@@ -123,7 +136,7 @@ export default function TeacherAttendanceRegister() {
             <label style={{ fontSize:'12px', fontWeight:'700', color:'#374151', display:'block', marginBottom:'6px' }}>CLASSE</label>
             <select value={selectedClass || ''} onChange={handleClassChange} style={{ ...s.inp, cursor:'pointer' }}>
               <option value="">-- Sélectionner une classe --</option>
-              {classes.map(c => <option key={c.idSalle} value={c.idSalle}>{c.libelle}</option>)}
+              {classes.map(c => <option key={c.idClasse} value={c.idClasse}>{c.libelle}</option>)}
             </select>
           </div>
           <div>

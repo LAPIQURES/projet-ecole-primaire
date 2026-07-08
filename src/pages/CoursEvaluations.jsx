@@ -65,6 +65,7 @@ export default function CoursEvaluations() {
 
   const [cours, setCours] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
+  const [classEvaluations, setClassEvaluations] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [loadingCours, setLoadingCours] = useState(false);
@@ -94,13 +95,15 @@ export default function CoursEvaluations() {
     if (!selectedClasse) {
       setCours([]);
       setEvaluations([]);
+      setClassEvaluations([]);
       setSelectedCoursForEvals(null);
       return;
     }
-    loadCoursForClasse(selectedClasse);
-    // reset eval list when switching class
     setEvaluations([]);
+    setClassEvaluations([]);
     setSelectedCoursForEvals(null);
+    loadCoursForClasse(selectedClasse);
+    loadClassEvaluations(selectedClasse);
   }, [selectedClasse]);
 
   const loadRefs = async () => {
@@ -132,11 +135,25 @@ export default function CoursEvaluations() {
     }
   };
 
+  const loadClassEvaluations = async (classeId) => {
+    setLoadingEvals(true);
+    setError('');
+    try {
+      const res = await getEvaluationsProgrammesAPI({ classe: classeId });
+      setClassEvaluations(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Erreur de chargement des évaluations');
+      setClassEvaluations([]);
+    } finally {
+      setLoadingEvals(false);
+    }
+  };
+
   const loadEvaluationsForCours = async (coursId) => {
     setLoadingEvals(true);
     setError('');
     try {
-      const res = await getEvaluationsProgrammesAPI({ cours_id: coursId });
+      const res = await getEvaluationsProgrammesAPI({ cours_id: coursId, classe: selectedClasse, idSalle: selectedCoursForEvals?.idSalle });
       setEvaluations(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Erreur de chargement des évaluations');
@@ -153,6 +170,8 @@ export default function CoursEvaluations() {
     return `${en.prenom || ''} ${en.nom || ''}`.trim() || en.cours || '—';
   };
   const salleLabel = (id) => salles.find((s) => String(s.idSalle) === String(id))?.libelle || '—';
+
+  const activeEvaluations = selectedCoursForEvals ? evaluations : classEvaluations;
 
   // --- Cours CRUD
   const openAddCours = () => {
@@ -320,7 +339,23 @@ export default function CoursEvaluations() {
     setError('');
     try {
       const scope = isAdminLike ? 'harmonisee' : 'sequentielle';
-      const idSalle = isAdminLike && scope === 'harmonisee' ? null : (evalForm.idSalle ? Number(evalForm.idSalle) : null);
+      const parsedIdSalle = evalForm.idSalle ? Number(evalForm.idSalle) : null;
+
+      if (!isAdminLike && !parsedIdSalle) {
+        setError('Une évaluation professeur doit être liée à une salle');
+        setSaving(false);
+        return;
+      }
+
+      if (isAdminLike && scope === 'harmonisee') {
+        if (parsedIdSalle) {
+          setError('Une évaluation harmonisée ne doit pas être liée à une salle');
+          setSaving(false);
+          return;
+        }
+      }
+
+      const idSalle = isAdminLike && scope === 'harmonisee' ? null : parsedIdSalle;
 
       const payload = {
         libelle: evalForm.libelle,
@@ -505,12 +540,12 @@ export default function CoursEvaluations() {
           </div>
 
           <div className="card" style={{ overflow: 'hidden' }}>
-            {selectedCoursForEvals && loadingEvals ? (
+            {loadingEvals ? (
               <div style={{ textAlign: 'center', padding: 52, color: '#94a3b8', fontSize: 13 }}>Chargement des évaluations...</div>
-            ) : !selectedCoursForEvals ? (
-              <div style={{ textAlign: 'center', padding: 52, color: '#94a3b8', fontSize: 13 }}>Aucune évaluation à afficher (sélectionnez un cours)</div>
-            ) : evaluations.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 52, color: '#94a3b8', fontSize: 13 }}>Aucune évaluation programmée pour ce cours</div>
+            ) : activeEvaluations.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 52, color: '#94a3b8', fontSize: 13 }}>
+                {selectedCoursForEvals ? 'Aucune évaluation programmée pour ce cours' : 'Aucune évaluation programmée pour cette classe'}
+              </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
@@ -522,7 +557,7 @@ export default function CoursEvaluations() {
                     </tr>
                   </thead>
                   <tbody>
-                    {evaluations.map((ev, idx) => (
+                    {activeEvaluations.map((ev, idx) => (
                       <tr key={ev.id} className="row" style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#fff' : '#fcfdff' }}>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: '#0f172a', fontWeight: 950 }}>{ev.libelle}</td>
                         <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>{ev.type || '—'}</td>

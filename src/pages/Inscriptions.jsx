@@ -230,6 +230,13 @@ export default function Inscriptions() {
     const base = Array.isArray(inscriptions) ? inscriptions : [];
 
     return base
+      .filter((i) => {
+        // Filtrer par année académique sélectionnée
+        if (selectedAnneeId) {
+          return String(i?.idAcademi ?? '') === String(selectedAnneeId);
+        }
+        return true;
+      })
       .map((i) => {
         const matricule = String(i?.matricule ?? i?.matriculeEleve ?? '');
         const e = eleveByMatricule.get(matricule);
@@ -271,7 +278,7 @@ export default function Inscriptions() {
 
         return matchSearch && matchSection && matchNiveau && matchAdmis && matchVenant;
       });
-  }, [inscriptions, eleveByMatricule, classeByLibelle, search, section, niveau, admisClasse, venantClasse]);
+  }, [inscriptions, eleveByMatricule, classeByLibelle, search, section, niveau, admisClasse, venantClasse, selectedAnneeId]);
 
   const totalInscrits = inscriptions.length;
   const totalEleves = eleves.length || inscriptions.length;

@@ -15,8 +15,8 @@ exports.login = async (req, res) => {
     try {
       console.log('DB: querying Admin for', credential);
       [admins] = await pool.query(
-        'SELECT * FROM Admin WHERE (login = ? OR username = ?) AND actif = 1',
-        [credential, credential]
+        'SELECT * FROM Admin WHERE username = ? AND actif = 1',
+        [credential]
       );
       console.log('DB: Admin query returned', (admins && admins.length) || 0);
     } catch (dbErr) {
@@ -29,19 +29,31 @@ exports.login = async (req, res) => {
       if (!ok) return res.status(401).json({ error: 'Mot de passe incorrect' });
       const roleMap = { 1: 'superadmin', 2: 'admin', 3: 'enseignant', 4: 'parent' };
       const role = roleMap[admin.typeAdmin] || 'admin';
-      const token = jwt.sign({ id: admin.ID, login: admin.login, role, type: 'admin', typeAdmin: admin.typeAdmin }, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
-      return res.json({ success: true, token, user: { id: admin.ID, nom: admin.nom, login: admin.login, role, type: 'admin', typeAdmin: admin.typeAdmin } });
+      const token = jwt.sign({ id: admin.ID, username: admin.username, role, type: 'admin', typeAdmin: admin.typeAdmin }, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
+      return res.json({ success: true, token, user: { id: admin.ID, nom: admin.nom, username: admin.username, role, type: 'admin', typeAdmin: admin.typeAdmin } });
     }
 
     // 2. Chercher dans Personne (enseignants et parents)
-    const [personnes] = await pool.query('SELECT * FROM Personne WHERE username = ? OR login = ? LIMIT 1', [credential, credential]);
+    console.log('DB: querying Personne for', credential);
+    let personnes;
+    try {
+      [personnes] = await pool.query('SELECT * FROM Personne WHERE username = ? LIMIT 1', [credential]);
+      console.log('DB: Personne query returned', (personnes && personnes.length) || 0);
+    } catch (dbErr) {
+      console.error('DB query error (Personne):', dbErr && dbErr.message);
+      return res.status(500).json({ error: 'Erreur base de données' });
+    }
+    
     if (personnes.length === 0) return res.status(401).json({ error: 'Utilisateur non trouvé' });
     const personne = personnes[0];
+    
+    console.log('DB: Personne found, checking password for typePersonne=', personne.typePersonne);
     const okP = personne.password.startsWith('$2') ? await bcrypt.compare(password, personne.password) : password === personne.password;
     if (!okP) return res.status(401).json({ error: 'Mot de passe incorrect' });
 
     // typePersonne: 2=enseignant, 3=parent
     const roleP = personne.typePersonne === 2 ? 'enseignant' : personne.typePersonne === 3 ? 'parent' : 'user';
+    console.log('DB: Role determined as', roleP);
 
     // Récupérer infos supplémentaires selon le rôle
     let extra = {};
@@ -55,6 +67,7 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign({ id: personne.idPers, username: personne.username, role: roleP, type: 'personne', typePersonne: personne.typePersonne, ...extra }, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
+    console.log('DB: Token generated for enseignant, returning login success');
     return res.json({
       success: true, token,
       user: { id: personne.idPers, nom: personne.nom, prenom: personne.prenom, username: personne.username, role: roleP, type: 'personne', typePersonne: personne.typePersonne, ...extra }

@@ -1,12 +1,9 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { getSocket } from '../services/socket';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { BookOpen, Users, FileText, MessageSquare, Calendar, Award, Clock, ChevronRight, Bell } from 'lucide-react';
 import TeacherLayout from '../components/TeacherLayout';
-import { getElevesAPI, getEmploiAPI, getMessagesAPI, getEvaluationsAPI } from '../services/api';
-import Eleves from './Eleves';
-import CoursEvaluations from './CoursEvaluations';
-import Messages from './Messages';
+import { getCurrentEnseignantAPI, getMessagesAPI, getEvaluationsAPI } from '../services/api';
 
 export default function DashboardEnseignant() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -20,28 +17,24 @@ export default function DashboardEnseignant() {
   const [agenda, setAgenda] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [classes, setClasses] = useState([]);
-  const location = useLocation();
   const navigate = useNavigate();
-  const [view, setView] = useState('overview');
 
   const todayLabel = useMemo(() => now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), [now]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [elevesRes, emploiRes, messagesRes, evalRes] = await Promise.allSettled([
-        getElevesAPI(),
-        getEmploiAPI(),
+      const [teacherRes, messagesRes, evalRes] = await Promise.allSettled([
+        getCurrentEnseignantAPI(),
         getMessagesAPI(),
         getEvaluationsAPI(),
       ]);
 
-      const eleves = elevesRes.status === 'fulfilled' && Array.isArray(elevesRes.value.data) ? elevesRes.value.data : [];
+      const teacher = teacherRes.status === 'fulfilled' && teacherRes.value?.data ? teacherRes.value.data : null;
       try {
         const classesRes = await (await import('../services/api')).getClassesAPI();
         setClasses(Array.isArray(classesRes.data) ? classesRes.data : []);
       } catch (e) { setClasses([]); }
-      const emplois = emploiRes.status === 'fulfilled' && Array.isArray(emploiRes.value.data) ? emploiRes.value.data : [];
       const messages = messagesRes.status === 'fulfilled' && Array.isArray(messagesRes.value.data) ? messagesRes.value.data : [];
       const evals = evalRes.status === 'fulfilled' && Array.isArray(evalRes.value.data) ? evalRes.value.data : [];
 
@@ -52,21 +45,21 @@ export default function DashboardEnseignant() {
       });
 
       setMetrics({
-        courses: Array.from(new Set(emplois.map((e) => e.idCours).filter(Boolean))).length || emplois.length,
-        students: eleves.length,
+        courses: teacher?.cours?.length ?? 0,
+        students: teacher?.stats?.nbEleves ?? 0,
         evaluations: evals.length,
         messages: teacherMessages.length,
       });
-      setAgenda(emplois.slice(0, 3).map((item, idx) => ({
-        time: item.heure || ['08:00', '10:00', '14:00'][idx] || '—',
-        title: item.cours || item.subject || item.libelle || `Cours ${idx + 1}`,
-        room: item.salle || item.libelleSalle || 'Salle',
+      setAgenda((teacher?.calendrier || []).slice(0, 3).map((item, idx) => ({
+        time: item.heure || item.startTime || ['08:00', '10:00', '14:00'][idx] || '—',
+        title: item.libelleCours || item.cours || item.subject || item.libelle || `Cours ${idx + 1}`,
+        room: item.libelleSalle || item.salle || 'Salle',
         color: ['#10b981', '#3b82f6', '#8b5cf6'][idx % 3],
       })));
       setAlerts([
         evals.length ? 'Évaluations enregistrées et à publier' : 'Aucune évaluation programmée',
         teacherMessages.length ? 'Messages à traiter' : 'Boîte de réception vide',
-        eleves.length ? 'Élèves synchronisés depuis l’API' : 'Aucun élève chargé',
+        teacher?.stats?.nbEleves ? 'Élèves assignés détectés' : 'Aucun élève chargé',
       ]);
     } catch (e) {
       // ignore
@@ -81,16 +74,8 @@ export default function DashboardEnseignant() {
       if (mounted) setLoading(false);
     }, 1800);
     loadData();
-    // derive view from pathname: /enseignant/... -> part after enseignant/
-    const seg = (location.pathname || '').replace(/\/+$/, '').split('/')[2] || '';
-    setView(seg === '' ? 'overview' : seg);
     return () => { mounted = false; clearTimeout(fallbackTimer); };
   }, [loadData]);
-
-  useEffect(() => {
-    const seg = (location.pathname || '').replace(/\/+$/, '').split('/')[2] || '';
-    setView(seg === '' ? 'overview' : seg);
-  }, [location.pathname]);
 
   useEffect(() => {
     try {
@@ -126,10 +111,10 @@ export default function DashboardEnseignant() {
   ];
 
   const quickActions = [
-    { label: 'Saisir les notes', icon: Award, color: '#10b981', path: '/enseignant/evaluations' },
-    { label: 'Voir mes élèves', icon: Users, color: '#3b82f6', path: '/enseignant/eleves' },
+    { label: 'Saisir les notes', icon: Award, color: '#10b981', path: '/enseignant/eleves' },
+    { label: 'Cahier d’appel', icon: FileText, color: '#3b82f6', path: '/enseignant/cahier-appel' },
     { label: 'Mes cours', icon: BookOpen, color: '#8b5cf6', path: '/enseignant/cours' },
-    { label: 'Messages', icon: MessageSquare, color: '#f59e0b', path: '/enseignant/messages' },
+    { label: 'Emploi du temps', icon: Calendar, color: '#f59e0b', path: '/enseignant/emploi-du-temps' },
   ];
 
   const agendaData = agenda.length > 0 ? agenda : [
@@ -138,21 +123,6 @@ export default function DashboardEnseignant() {
 
   return (
     <TeacherLayout title="Tableau de bord" subtitle={todayLabel}>
-      {view === 'eleves' && (
-        <div style={{ paddingTop: 8 }}>
-          <Eleves />
-        </div>
-      )}
-      {view === 'cours' && (
-        <div style={{ paddingTop: 8 }}>
-          <CoursEvaluations />
-        </div>
-      )}
-      {view === 'messages' && (
-        <div style={{ paddingTop: 8 }}>
-          <Messages />
-        </div>
-      )}
       <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
       <div style={{ marginBottom: '24px', animation: 'fadeUp 0.35s ease both' }}>
@@ -186,7 +156,7 @@ export default function DashboardEnseignant() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
               {quickActions.map((a) => (
-                <a key={a.label} onClick={() => { navigate(a.path); setView((a.path||'').split('/').pop() || 'overview'); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, background: `${a.color}10`, textDecoration: 'none', cursor: 'pointer' }}>
+                <a key={a.label} onClick={() => navigate(a.path)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, background: `${a.color}10`, textDecoration: 'none', cursor: 'pointer' }}>
                   <div style={{ width: 34, height: 34, borderRadius: 10, background: `${a.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <a.icon size={16} color={a.color} />
                   </div>

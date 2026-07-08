@@ -37,7 +37,7 @@ function EleveSearch({ value, onChange }) {
   const search = async (q) => {
     if (!q || q.length < 2) { setResults([]); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/parents/search?q=${q}`, {
+      const res = await fetch(`/api/parents/search?q=${q}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
@@ -108,7 +108,7 @@ export default function Parents() {
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [form, setForm] = useState({ nom: '', prenom: '', mobile: '', phone: '', matricule: '' });
+  const [form, setForm] = useState({ nom: '', prenom: '', mobile: '', phone: '', password: '', matricule: '' });
 
   useEffect(() => { load(); }, []);
 
@@ -129,8 +129,8 @@ export default function Parents() {
     }
   };
 
-  const openAdd = () => { setEditing(null); setForm({ nom: '', prenom: '', mobile: '', phone: '', matricule: '' }); setError(''); setShowModal(true); };
-  const openEdit = (p) => { setEditing(p); setForm({ nom: p.nom, prenom: p.prenom, mobile: p.mobile || '', phone: p.phone || '', matricule: p.matricule || '' }); setError(''); setShowModal(true); };
+  const openAdd = () => { setEditing(null); setForm({ nom: '', prenom: '', mobile: '', phone: '', password: '', matricule: '' }); setError(''); setShowModal(true); };
+  const openEdit = (p) => { setEditing(p); setForm({ nom: p.nom, prenom: p.prenom, mobile: p.mobile || '', phone: p.phone || '', password: '', matricule: p.matricule || '' }); setError(''); setShowModal(true); };
 
   const toggleActive = async (p) => {
     try {
@@ -147,6 +147,7 @@ export default function Parents() {
   const handleSubmit = async () => {
     if (!form.nom || !form.prenom) { setError('Nom et prénom requis'); return; }
     if (!form.matricule) { setError('Veuillez sélectionner un élève'); return; }
+    if (!editing && !form.password) { setError('Mot de passe requis pour un nouveau parent'); return; }
     setError('');
     try {
       if (editing) { await updateParentAPI(editing.idParent, form); setSuccess('Parent modifié !'); }
@@ -267,7 +268,6 @@ export default function Parents() {
         </Modal>
       )}
 
-      {showModal && (
         <Modal title={editing ? 'Modifier le parent' : 'Nouveau parent'} onClose={() => setShowModal(false)}>
           {error && <div style={{ marginBottom: '14px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', display: 'flex', gap: '8px', alignItems: 'center', color: '#dc2626', fontSize: '13px' }}><AlertCircle size={14} />{error}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -275,6 +275,7 @@ export default function Parents() {
             <div><label style={s.label}>Nom *</label><input style={s.inp} value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} placeholder="Nom" /></div>
             <div><label style={s.label}>Mobile</label><input style={s.inp} value={form.mobile} onChange={e => setForm({ ...form, mobile: e.target.value })} placeholder="Ex: 677000000" /></div>
             <div><label style={s.label}>Téléphone</label><input style={s.inp} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Ex: 677000000" /></div>
+            <div><label style={s.label}>Mot de passe {!editing && '*'}</label><input style={s.inp} type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder={editing ? 'Laisser vide pour ne pas modifier' : 'Mot de passe initial'} /></div>
             <div style={{ gridColumn: '1/-1' }}>
               <EleveSearch value={form.matricule} onChange={(val) => setForm({ ...form, matricule: val })} />
             </div>
@@ -284,7 +285,6 @@ export default function Parents() {
             <button onClick={handleSubmit} style={s.btn('#10b981')}>{editing ? 'Mettre à jour le parent' : 'Enregistrer le parent'}</button>
           </div>
         </Modal>
-      )}
       </div>
     </Layout>
   );

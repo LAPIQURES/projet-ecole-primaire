@@ -39,6 +39,19 @@ const DAYS = [
 
 const HOURS = Array.from({ length: 10 }, (_, i) => 8 + i); // 8h → 17h
 
+const normalizeScheduleDay = (value) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  if (/^[1-5]$/.test(lower)) return Number(lower);
+  if (lower.startsWith('lun')) return 1;
+  if (lower.startsWith('mar')) return 2;
+  if (lower.startsWith('mer')) return 3;
+  if (lower.startsWith('jeu')) return 4;
+  if (lower.startsWith('ven')) return 5;
+  return null;
+};
+
 const EMPTY_FORM = {
   id: null,
   idClasse: '',
@@ -146,7 +159,7 @@ export default function Emploi() {
     const m = new Map();
 
     for (const it of classItems) {
-      const day = Number(it.dayOfWeek);
+      const day = normalizeScheduleDay(it.dayOfWeek ?? it.jour ?? it.day);
       if (!day || day < 1 || day > 5) continue;
 
       const start = timeToMinutes(it.startTime);
@@ -251,12 +264,13 @@ export default function Emploi() {
     setError('');
 
     const duration = computeDurationHours(it.startTime, it.endTime);
+    const normalizedDay = normalizeScheduleDay(it.dayOfWeek ?? it.jour ?? it.day) ?? 1;
 
     setForm({
       ...EMPTY_FORM,
       id: it.id,
       idClasse: it.idClasse ? String(it.idClasse) : '',
-      dayOfWeek: it.dayOfWeek ? String(it.dayOfWeek) : '1',
+      dayOfWeek: String(normalizedDay),
       startTime: normalizeTimeInput(it.startTime) || '08:00',
       duration: String(duration || 1),
       subject: it.subject || '',
@@ -951,7 +965,7 @@ function computeDurationHours(startTime, endTime) {
 }
 
 function findConflict(candidate, items, ignoreId) {
-  const day = Number(candidate.dayOfWeek);
+  const day = normalizeScheduleDay(candidate.dayOfWeek);
   const start = timeToMinutes(candidate.startTime);
   const end = timeToMinutes(candidate.endTime);
 

@@ -21,6 +21,16 @@ import Tranches from './pages/Tranches';
 import Rapports from './pages/Rapports';
 import Bulletins from './pages/Bulletins';
 import Personnel from './pages/Personnel';
+import SaisieNotes from './pages/SaisieNotes';
+import TeacherEvaluations from './pages/TeacherEvaluations';
+import TeacherProfile from './pages/TeacherProfile';
+import TeacherMessages from './pages/TeacherMessages';
+import TeacherEleves from './pages/TeacherEleves';
+import TeacherCours from './pages/TeacherCours';
+import TeacherCourseList from './pages/TeacherCourseList';
+import TeacherSchedule from './pages/TeacherSchedule';
+import TeacherStudentList from './pages/TeacherStudentList';
+import TeacherEvaluationCreate from './pages/TeacherEvaluationCreate';
 import Layout from './components/Layout';
 import ParentLayout from './components/ParentLayout';
 import TeacherLayout from './components/TeacherLayout';
@@ -121,9 +131,9 @@ export default function App() {
         <Route path="/tranches" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Tranches /></ProtectedRoute>} />
         <Route path="/rapports" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Rapports /></ProtectedRoute>} />
         <Route path="/bulletins" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Bulletins /></ProtectedRoute>} />
+        <Route path="/saisie-notes" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><SaisieNotes /></ProtectedRoute>} />
         <Route path="/personnel" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Personnel /></ProtectedRoute>} />
         <Route path="/emploi-du-temps" element={<ProtectedRoute allowedRoles={['admin','superadmin','enseignant','parent']}><Emploi /></ProtectedRoute>} />
-        <Route path="/enseignant/emploi-du-temps" element={<ProtectedRoute allowedRoles={['enseignant']}><Emploi /></ProtectedRoute>} />
         <Route path="/parent/emploi-du-temps" element={<ProtectedRoute allowedRoles={['parent']}><Emploi /></ProtectedRoute>} />
         <Route path="/discipline" element={<ProtectedRoute allowedRoles={['admin','superadmin']}>
           <Layout><DisciplineModule /></Layout>
@@ -131,14 +141,24 @@ export default function App() {
 
         {/* ── ENSEIGNANT ── */}
         <Route path="/enseignant/dashboard" element={<ProtectedRoute allowedRoles={['enseignant']}><DashboardEnseignant /></ProtectedRoute>} />
+        <Route path="/enseignant/evaluations" element={<ProtectedRoute allowedRoles={['enseignant']}><TeacherEvaluationCreate /></ProtectedRoute>} />
+        <Route path="/enseignant/eleves" element={<ProtectedRoute allowedRoles={['enseignant']}><TeacherStudentList /></ProtectedRoute>} />
+        <Route path="/enseignant/cours" element={<ProtectedRoute allowedRoles={['enseignant']}><TeacherCourseList /></ProtectedRoute>} />
+        <Route path="/enseignant/messages" element={<ProtectedRoute allowedRoles={['enseignant']}><TeacherMessages /></ProtectedRoute>} />
+        <Route path="/enseignant/profil" element={<ProtectedRoute allowedRoles={['enseignant']}><TeacherProfile /></ProtectedRoute>} />
         <Route path="/enseignant/cahier-appel" element={<ProtectedRoute allowedRoles={['enseignant']}>
           <TeacherLayout><TeacherAttendanceRegister /></TeacherLayout>
         </ProtectedRoute>} />
+        <Route path="/enseignant/emploi-du-temps" element={<ProtectedRoute allowedRoles={['enseignant']}><TeacherSchedule /></ProtectedRoute>} />
         <Route path="/enseignant/*" element={<ProtectedRoute allowedRoles={['enseignant']}><DashboardEnseignant /></ProtectedRoute>} />
 
         {/* ── PARENT ── */}
         <Route path="/parent/dashboard" element={<ProtectedRoute allowedRoles={['parent']}><DashboardParent /></ProtectedRoute>} />
-        <Route path="/parent/*" element={<ProtectedRoute allowedRoles={['parent']}><DashboardParent /></ProtectedRoute>} />
+        <Route path="/parent/enfant" element={<ProtectedRoute allowedRoles={['parent']}><DashboardParent /></ProtectedRoute>} />
+        <Route path="/parent/bulletins" element={<ProtectedRoute allowedRoles={['parent']}><DashboardParent /></ProtectedRoute>} />
+        <Route path="/parent/messages" element={<ProtectedRoute allowedRoles={['parent']}><DashboardParent /></ProtectedRoute>} />
+        <Route path="/parent/paiements" element={<ProtectedRoute allowedRoles={['parent']}><DashboardParent /></ProtectedRoute>} />
+        <Route path="/parent/*" element={<Navigate to="/parent/dashboard" replace />} />
 
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<HomeRedirect />} />

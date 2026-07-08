@@ -168,20 +168,29 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
   const getAttendanceStats = () => {
     if (!attendance || attendance.length === 0) {
       return [
-        { name: 'Pas de données', value: 100, color: '#c7d2e0' }
+        { name: 'Pas de données', value: 0, color: '#c7d2e0' }
       ];
     }
 
     const absent = attendance.filter(a => a.status === 'Absent').length;
     const present = attendance.filter(a => a.status === 'Présent').length;
     
-    return [
+    const data = [
       { name: 'Présent', value: present, color: '#0062ff' },
       { name: 'Absent', value: absent, color: '#ffb74d' }
-    ].filter(s => s.value > 0);
+    ];
+
+    return data.filter((s) => s.value > 0);
   };
 
   const attendanceData = getAttendanceStats();
+  const presentCount = attendance.filter((a) => a.status === 'Présent').length;
+  const absentCount = attendance.filter((a) => a.status === 'Absent').length;
+  const attendanceTotal = attendance.length;
+  const presentPercent = attendanceTotal > 0 ? Math.round((presentCount / attendanceTotal) * 100) : 0;
+  const recentAbsences = attendance
+    .filter((a) => a.status === 'Absent')
+    .slice(0, 8);
 
   const handlePrint = () => {
     // Create a new window for printing the bulletin
@@ -363,8 +372,8 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
                 </ResponsiveContainer>
                 {/* Center text */}
                 <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '26px', fontWeight: '800', color: '#1a202c' }}>{Math.round(attendanceData[0].value)}%</div>
-                  <div style={{ fontSize: '10px', color: '#718096', fontWeight: '600', textTransform: 'uppercase' }}>Présent</div>
+                  <div style={{ fontSize: '26px', fontWeight: '800', color: '#1a202c' }}>{attendanceTotal > 0 ? `${presentPercent}%` : '—'}</div>
+                  <div style={{ fontSize: '10px', color: '#718096', fontWeight: '600', textTransform: 'uppercase' }}>Taux présence</div>
                 </div>
               </div>
               
@@ -375,12 +384,38 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.color, flexShrink: 0 }} />
                     <div>
                       <div style={{ fontSize: '12px', color: '#718096', fontWeight: '500' }}>{item.name}</div>
-                      <div style={{ fontSize: '13px', color: '#1a202c', fontWeight: '700' }}>{item.value}%</div>
+                      <div style={{ fontSize: '13px', color: '#1a202c', fontWeight: '700' }}>{item.value}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* Recent Absences Card */}
+          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#1a202c', margin: 0 }}>Dernières absences</h4>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>{absentCount} absence(s)</span>
+            </div>
+            {attendanceTotal === 0 ? (
+              <div style={{ color: '#94a3b8', padding: '18px 0' }}>Aucune présence enregistrée ce mois-ci.</div>
+            ) : recentAbsences.length === 0 ? (
+              <div style={{ color: '#94a3b8', padding: '18px 0' }}>Aucune absence détectée ce mois-ci.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: '12px' }}>
+                {recentAbsences.map((item, idx) => (
+                  <div key={idx} style={{ padding: '14px 16px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #eef2f7' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: '#1f2937' }}>{item.date}</span>
+                      <span style={{ fontSize: '12px', color: '#ef4444', fontWeight: '700' }}>Absent</span>
+                    </div>
+                    <div style={{ marginTop: '8px', fontSize: '12px', color: '#475569' }}>{item.salle || 'Salle inconnue'}</div>
+                    {item.commentaire && <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b' }}>{item.commentaire}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* All Exam Results Table Card */}

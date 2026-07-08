@@ -49,12 +49,12 @@ const mergeMonthlySeries = (paiements, inscriptions) => {
   const map = new Map();
 
   (Array.isArray(paiements) ? paiements : []).forEach((r) => {
-    const key = r.mois || r.moisCourt;
+    const key = r.mois;
     if (!key) return;
     map.set(key, {
       key,
-      mois: r.mois || null,
-      moisCourt: toMonthShortFr(r.mois, r.moisCourt),
+      mois: r.mois,
+      moisCourt: toMonthShortFr(r.mois, null),
       paiements: Number(r.total) || 0,
       nbPaiements: Number(r.nbPaiements) || 0,
       inscriptions: 0,
@@ -62,13 +62,13 @@ const mergeMonthlySeries = (paiements, inscriptions) => {
   });
 
   (Array.isArray(inscriptions) ? inscriptions : []).forEach((r) => {
-    const key = r.mois || r.moisCourt;
+    const key = r.mois;
     if (!key) return;
     const existing = map.get(key);
     const base = existing || {
       key,
-      mois: r.mois || null,
-      moisCourt: toMonthShortFr(r.mois, r.moisCourt),
+      mois: r.mois,
+      moisCourt: toMonthShortFr(r.mois, null),
       paiements: 0,
       nbPaiements: 0,
       inscriptions: 0,
@@ -77,7 +77,7 @@ const mergeMonthlySeries = (paiements, inscriptions) => {
     map.set(key, base);
   });
 
-  return Array.from(map.values()).sort((a, b) => (a.mois || a.key).localeCompare(b.mois || b.key));
+  return Array.from(map.values()).sort((a, b) => (a.mois).localeCompare(b.mois));
 };
 
 export default function Dashboard() {

@@ -31,7 +31,7 @@ const getUserIdentity = () => {
   }
 };
 
-export default function Messages() {
+export default function Messages({ noLayout = false }) {
   const me = useMemo(() => getUserIdentity(), []);
   const [contacts, setContacts] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -217,9 +217,9 @@ export default function Messages() {
     }
   };
 
-  return (
-    <Layout title="Messages" subtitle="Messagerie interne">
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, minHeight: 'calc(100vh - 120px)' }}>
+  const renderMessagesContent = () => (
+    <>
+    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, minHeight: noLayout ? 'auto' : 'calc(100vh - 120px)' }}>
         <aside style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: 16, borderBottom: '1px solid #eef2f7' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -401,6 +401,16 @@ export default function Messages() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (noLayout) {
+    return renderMessagesContent();
+  }
+
+  return (
+    <Layout title="Messages" subtitle="Messagerie interne">
+      {renderMessagesContent()}
     </Layout>
   );
 }

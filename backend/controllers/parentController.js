@@ -51,8 +51,14 @@ exports.getParentById = async (req, res) => {
 
 exports.createParent = async (req, res) => {
   try {
-    const { nom, prenom, mobile, phone, matricule } = req.body;
+    const { nom, prenom, mobile, phone, matricule, password } = req.body;
     if (!nom || !prenom) return res.status(400).json({ error: 'Nom et prénom requis' });
+    
+    // Validate password if provided
+    const finalPassword = password || '1234'; // Default fallback password
+    if (!password) {
+      console.warn(`⚠️ Parent ${nom} ${prenom} created without password, using default: 1234`);
+    }
     
     const idAdmin = req.user?.id || 1000;
     const idPers = await getNextIdPers();
@@ -60,8 +66,8 @@ exports.createParent = async (req, res) => {
     // Insert parent person record
     await pool.query(
       `INSERT INTO Personne (idPers, nom, prenom, mobile, phone, typePersonne, dateNaissance, lieuNaissance, username, password, idAdmin, created_at)
-       VALUES (?, ?, ?, ?, ?, 3, '2000-01-01', '', '', '1234', ?, NOW())`,
-      [idPers, nom, prenom, mobile || '', phone || '', idAdmin]
+       VALUES (?, ?, ?, ?, ?, 3, '2000-01-01', '', '', ?, ?, NOW())`,
+      [idPers, nom, prenom, mobile || '', phone || '', finalPassword, idAdmin]
     );
 
     const [result] = await pool.query(
@@ -93,13 +99,22 @@ exports.createParent = async (req, res) => {
 
 exports.updateParent = async (req, res) => {
   try {
-    const { nom, prenom, mobile, phone, matricule } = req.body;
+    const { nom, prenom, mobile, phone, matricule, password } = req.body;
     const [parent] = await pool.query('SELECT idPers FROM Parents WHERE idParent = ?', [req.params.id]);
     if (!parent.length) return res.status(404).json({ error: 'Parent non trouvé' });
     
-    // Update personal info
-    await pool.query(`UPDATE Personne SET nom=?, prenom=?, mobile=?, phone=? WHERE idPers=?`,
-      [nom, prenom, mobile || '', phone || '', parent[0].idPers]);
+    // Update personal info including password if provided
+    const updateFields = ['nom=?', 'prenom=?', 'mobile=?', 'phone=?'];
+    const updateValues = [nom, prenom, mobile || '', phone || ''];
+    
+    if (password) {
+      updateFields.push('password=?');
+      updateValues.push(password);
+    }
+    
+    updateValues.push(parent[0].idPers);
+    
+    await pool.query(`UPDATE Personne SET ${updateFields.join(',')} WHERE idPers=?`, updateValues);
     
     // Handle matricule - add/update parent-eleve link
     if (matricule !== undefined && matricule) {

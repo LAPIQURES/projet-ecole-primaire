@@ -28,7 +28,7 @@ export default function Login() {
       setSuccessMessage('Connexion réussie ! Redirection...')
         setTimeout(() => {
         const r = res.data.user?.role || 'admin'
-        if (r === 'enseignant') navigate('/dashboard-enseignant')
+        if (r === 'enseignant') navigate('/enseignant/dashboard')
         else if (r === 'parent') navigate('/parent/dashboard')
         else navigate('/dashboard')
       }, 1500)

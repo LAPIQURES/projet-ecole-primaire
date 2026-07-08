@@ -11,7 +11,7 @@ const inp = {
   fontFamily: 'inherit', color: '#1e293b', background: '#fff',
 };
 
-export default function Paiements() {
+export default function Paiements({ noLayout = false }) {
   const [paiements, setPaiements] = useState([]);
   const [modes, setModes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,8 +73,8 @@ export default function Paiements() {
     .filter(p => { const d = new Date(p.datePaie); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); })
     .reduce((sum, p) => sum + Number(p.montant || 0), 0);
 
-  return (
-    <Layout title="Gestion des Paiements" subtitle="Suivi des paiements de scolarité">
+  const paymentContent = () => (
+    <>
       <style>{`input:focus,select:focus,textarea:focus{border-color:#16a34a!important;box-shadow:0 0 0 3px rgba(22,163,74,0.1)}`}</style>
 
       {success && <div style={{ marginBottom: 16, padding: '12px 16px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 10, color: '#15803d', fontSize: 13, fontWeight: 600 }}>✅ {success}</div>}
@@ -247,6 +247,16 @@ export default function Paiements() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (noLayout) {
+    return paymentContent();
+  }
+
+  return (
+    <Layout title="Paiements" subtitle="Gestion des paiements scolaires">
+      {paymentContent()}
     </Layout>
   );
 }

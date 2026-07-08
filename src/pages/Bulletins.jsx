@@ -1,6 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Download, Eye, Trash2, Check, AlertCircle } from 'lucide-react';
 import Layout from '../components/Layout';
+import {
+  getElevesAPI,
+  getAnneesAPI,
+  getTrimestresAPI,
+  getClassesAPI,
+  getSallesAPI,
+  getBulletinsByEleveAPI,
+  getBulletinDetailAPI,
+  createBulletinAPI,
+  publishBulletinAPI,
+  deleteBulletinAPI,
+  generateClassBulletinsAPI
+} from '../services/api';
 
 const Bulletins = () => {
   const [bulletins, setBulletins] = useState([]);
@@ -22,6 +35,11 @@ const Bulletins = () => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
+  // Salles filtrées en fonction de la classe sélectionnée
+  const filteredSalles = formData.idClasse
+    ? salles.filter(s => String(s.idClasse) === String(formData.idClasse))
+    : salles;
+
   useEffect(() => {
     loadEleves();
     loadAnnees();
@@ -30,30 +48,27 @@ const Bulletins = () => {
 
   const loadEleves = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/eleves', token ? { headers: { 'Authorization': `Bearer ${token}` } } : {});
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.error || 'Erreur chargement des élèves');
-        setEleves([]);
-        return;
-      }
+      const { data } = await getElevesAPI();
       setEleves(Array.isArray(data) ? data : (data.eleves || []));
     } catch (error) {
       console.error('Erreur chargement élèves:', error);
       setError('Erreur chargement des élèves');
+      setEleves([]);
     }
   };
 
   const loadAnnees = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/years', {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      const data = await response.json();
-      setAnnees(data.annees || data || []);
-      setTrimestres(data.trimestres || []);
+      const { data: anneesData } = await getAnneesAPI();
+      setAnnees(anneesData.annees || anneesData || []);
+      // Charger les trimestres séparément
+      try {
+        const { data: trimestresData } = await getTrimestresAPI();
+        setTrimestres(trimestresData || []);
+      } catch (err) {
+        console.error('Erreur chargement trimestres:', err);
+        setTrimestres(anneesData.trimestres || []);
+      }
     } catch (error) {
       console.error('Erreur chargement années:', error);
     }
@@ -61,12 +76,8 @@ const Bulletins = () => {
 
   const loadClassesAndSalles = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const resC = await fetch('/api/classes', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      const classesData = await resC.json();
+      const [{ data: classesData }, { data: sallesData }] = await Promise.all([getClassesAPI(), getSallesAPI()]);
       setClasses(classesData || []);
-      const resS = await fetch('/api/salles', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      const sallesData = await resS.json();
       setSalles(sallesData || []);
     } catch (err) {
       console.error('Erreur chargement classes/salles', err);
@@ -76,15 +87,14 @@ const Bulletins = () => {
   const handleEleveSelect = async (matricule) => {
     setSelectedEleve(matricule);
     setLoading(true);
+    setError(''); // Effacer les erreurs précédentes
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/bulletins/eleve/${matricule}`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      const data = await response.json();
-      setBulletins(data);
+      const { data } = await getBulletinsByEleveAPI(matricule);
+      setBulletins(data || []);
     } catch (error) {
       console.error('Erreur chargement bulletins:', error);
+      // Ne pas afficher d'erreur si c'est juste qu'il n'y a pas de bulletins
+      setBulletins([]);
     }
     setLoading(false);
   };
@@ -92,15 +102,12 @@ const Bulletins = () => {
   const handleViewBulletin = async (idBulletin) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/bulletins/${idBulletin}`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      const data = await response.json();
+      const { data } = await getBulletinDetailAPI(idBulletin);
       setBulletinDetail(data);
       setSelectedBulletin(idBulletin);
     } catch (error) {
       console.error('Erreur chargement détail bulletin:', error);
+      setError('Erreur chargement du bulletin');
     }
     setLoading(false);
   };
@@ -115,27 +122,14 @@ const Bulletins = () => {
     setError('');
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/bulletins/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(formData)
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setSuccess('Bulletin créé avec succès');
-        handleEleveSelect(formData.matricule);
-        setFormData({ matricule: '', idAnnee: '', idTrimes: '', appreciationGeneral: '' });
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(data.error || 'Erreur création bulletin');
-      }
+      const { data } = await createBulletinAPI(formData);
+      setSuccess('Bulletin créé avec succès');
+      handleEleveSelect(formData.matricule);
+      setFormData({ matricule: '', idAnnee: '', idTrimes: '', appreciationGeneral: '' });
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Erreur création bulletin:', error);
-      setError('Erreur création bulletin: ' + error.message);
+      setError(error.response?.data?.error || 'Erreur création bulletin');
     }
     setLoading(false);
   };
@@ -147,71 +141,45 @@ const Bulletins = () => {
         return;
       }
       setError('');
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/bulletins/generate-class', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ idClasse: formData.idClasse || null, idSalle: formData.idSalle || null, idAnnee: formData.idAnnee, idTrimes: formData.idTrimes })
+      const response = await generateClassBulletinsAPI({
+        idClasse: formData.idClasse || null,
+        idSalle: formData.idSalle || null,
+        idAnnee: formData.idAnnee,
+        idTrimes: formData.idTrimes
       });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        setError(err.error || 'Erreur génération bulletins');
-        return;
-      }
-
-      const html = await response.text();
+      const html = response.data;
       const w = window.open('', '_blank');
       w.document.write(html);
       w.document.close();
       w.focus();
     } catch (err) {
       console.error('Erreur impression classe', err);
-      setError('Erreur impression classe');
+      setError(err.response?.data?.error || 'Erreur impression classe');
     }
   };
 
   const handlePublishBulletin = async (idBulletin, statut) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/bulletins/${idBulletin}/publish`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ statut })
-      });
-      if (response.ok) {
-        setSuccess(`Bulletin ${statut}`);
-        handleEleveSelect(selectedEleve);
-        setTimeout(() => setSuccess(''), 3000);
-      }
+      await publishBulletinAPI(idBulletin, statut);
+      setSuccess(`Bulletin ${statut}`);
+      handleEleveSelect(selectedEleve);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Erreur publication bulletin:', error);
-      setError('Erreur publication bulletin');
+      setError(error.response?.data?.error || 'Erreur publication bulletin');
     }
   };
 
   const handleDeleteBulletin = async (idBulletin) => {
     if (!window.confirm('Confirmer la suppression?')) return;
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/bulletins/${idBulletin}`, {
-        method: 'DELETE',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      if (response.ok) {
-        setSuccess('Bulletin supprimé');
-        handleEleveSelect(selectedEleve);
-        setTimeout(() => setSuccess(''), 3000);
-      }
+      await deleteBulletinAPI(idBulletin);
+      setSuccess('Bulletin supprimé');
+      handleEleveSelect(selectedEleve);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Erreur suppression bulletin:', error);
-      setError('Erreur suppression bulletin');
+      setError(error.response?.data?.error || 'Erreur suppression bulletin');
     }
   };
 
@@ -353,7 +321,13 @@ const Bulletins = () => {
                 </label>
                 <select
                   value={formData.idClasse || ''}
-                  onChange={(e) => setFormData({ ...formData, idClasse: e.target.value, idSalle: '' })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Vérifier si la salle actuelle appartient toujours à la nouvelle classe
+                    const newFiltered = val ? salles.filter(s => String(s.idClasse) === String(val)) : salles;
+                    const keepSalle = newFiltered.some(s => String(s.idSalle) === String(formData.idSalle));
+                    setFormData({ ...formData, idClasse: val, idSalle: keepSalle ? formData.idSalle : '' });
+                  }}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
@@ -376,7 +350,11 @@ const Bulletins = () => {
                 </label>
                 <select
                   value={formData.idSalle || ''}
-                  onChange={(e) => setFormData({ ...formData, idSalle: e.target.value, idClasse: '' })}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const sel = salles.find(s => String(s.idSalle) === String(val));
+                    setFormData({ ...formData, idSalle: val, idClasse: sel ? String(sel.idClasse) : formData.idClasse });
+                  }}
                   style={{
                     width: '100%',
                     padding: '8px 12px',
@@ -387,7 +365,7 @@ const Bulletins = () => {
                   }}
                 >
                   <option value="">-- Sélectionner --</option>
-                  {salles.map((s) => (
+                  {filteredSalles.map((s) => (
                     <option key={s.idSalle} value={s.idSalle}>{s.libelle} ({s.idClasse || '—'})</option>
                   ))}
                 </select>

@@ -10,6 +10,13 @@ async function resolvePersonneColumns() {
 
 exports.getEleves = async (req, res) => {
   try {
+    const { salle } = req.query;
+    const conditions = [];
+    const params = [];
+    if (salle) {
+      conditions.push('s.idSalle = ?');
+      params.push(salle);
+    }
     const [rows] = await pool.query(`
       SELECT e.matricule, e.nom, e.prenom, e.sexe,
         e.dateNaissance, e.lieuNaissance, e.langue,
@@ -25,8 +32,9 @@ exports.getEleves = async (req, res) => {
       LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
       LEFT JOIN Parents pr ON pr.matricule = e.matricule
       LEFT JOIN Personne p ON p.idPers = pr.idPers
+      ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
       ORDER BY e.created_at DESC LIMIT 500
-    `);
+    `, params);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -245,31 +253,45 @@ exports.getEleveAttendance = async (req, res) => {
 // Mark attendance for a student (teacher attendance register)
 exports.markAttendance = async (req, res) => {
   try {
-    const { matricule, idSalle, commentaire } = req.body;
+    const { matricule, idSalle, commentaire, date } = req.body;
     const idAdmin = req.user?.id || 1000;
-    
-    if (!matricule || !idSalle) {
-      return res.status(400).json({ error: 'matricule et idSalle requis' });
+
+    if (!matricule) {
+      return res.status(400).json({ error: 'matricule requis' });
     }
-    
-    // Convert matricule to integer (handle both string and number)
-    const matriculeInt = typeof matricule === 'string' 
-      ? parseInt(matricule.replace(/\D/g, '')) || parseInt(matricule)
-      : parseInt(matricule);
-    const idSalleInt = parseInt(idSalle);
-    
-    // Default idAcademi to 10 (most common based on DB)
-    const idAcademi = 10;
-    
+
+    const matriculeInt = typeof matricule === 'string'
+      ? parseInt(matricule.replace(/\D/g, ''), 10) || parseInt(matricule, 10)
+      : parseInt(matricule, 10);
+    let finalIdSalle = idSalle ? parseInt(idSalle, 10) : null;
+
+    if (!finalIdSalle) {
+      const [prev] = await pool.query(
+        'SELECT idSalle FROM Frequente WHERE matricule = ? AND idSalle IS NOT NULL ORDER BY created_at DESC LIMIT 1',
+        [matriculeInt]
+      );
+      if (prev.length > 0) {
+        finalIdSalle = prev[0].idSalle;
+      }
+    }
+
+    if (!finalIdSalle) {
+      return res.status(400).json({ error: 'Salle requise pour marquer la présence' });
+    }
+
+    const [annees] = await pool.query('SELECT idAnnee FROM AnneeAcademique ORDER BY created_at DESC LIMIT 1');
+    const idAcademi = annees.length > 0 ? annees[0].idAnnee : 1;
+    const createdAt = date || new Date().toISOString().split('T')[0];
+
     const [result] = await pool.query(`
       INSERT INTO Frequente (matricule, idSalle, idAcademi, commentaire, idAdmin, created_at)
-      VALUES (?, ?, ?, ?, ?, NOW())
-    `, [matriculeInt, idSalleInt, idAcademi, commentaire || 'RAS', idAdmin]);
-    
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [matriculeInt, finalIdSalle, idAcademi, commentaire || 'RAS', idAdmin, createdAt]);
+
     res.status(201).json({
       idFrequente: result.insertId,
       message: 'Présence enregistrée',
-      status: commentaire?.includes('absent') ? 'Absent' : 'Présent'
+      status: commentaire?.toLowerCase().includes('absent') ? 'Absent' : 'Présent'
     });
   } catch (error) {
     console.error('markAttendance error:', error.message);

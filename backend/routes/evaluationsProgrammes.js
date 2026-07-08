@@ -25,13 +25,18 @@ async function ensureTable() {
   `);
 
   const [cols] = await pool.query(`
-    SELECT COLUMN_NAME
+    SELECT COLUMN_NAME, IS_NULLABLE, COLUMN_TYPE
     FROM INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'EvaluationProgramme'
   `);
   const set = new Set(cols.map((row) => row.COLUMN_NAME));
   if (!set.has('idSalle')) {
     await pool.query('ALTER TABLE EvaluationProgramme ADD COLUMN idSalle INT NULL AFTER cours_id');
+  } else {
+    const idSalleInfo = cols.find((row) => row.COLUMN_NAME === 'idSalle');
+    if (idSalleInfo && idSalleInfo.IS_NULLABLE === 'NO') {
+      await pool.query('ALTER TABLE EvaluationProgramme MODIFY COLUMN idSalle INT NULL');
+    }
   }
 }
 
@@ -57,7 +62,8 @@ router.get('/', auth, async (req, res) => {
       params.push(idSalle);
     }
 
-    const w = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    // If multiple filters are provided, return evaluations matching ANY of them
+    const w = where.length ? `WHERE ${where.join(' OR ')}` : '';
 
     const [rows] = await pool.query(
       `SELECT id, libelle, type, date, duree, coeff, classe, cours_id, idSalle, enseignant_id, note_max, description, created_at, updated_at

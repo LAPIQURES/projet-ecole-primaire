@@ -49,7 +49,7 @@ export default function Classes() {
       // Si le backend expose /classes/cycles, on l'utilise directement via fetch simple.
       try {
         const token = localStorage.getItem('token');
-        const r = await fetch('http://localhost:5000/api/classes/cycles', {
+        const r = await fetch('/api/classes/cycles', {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (r.ok) {

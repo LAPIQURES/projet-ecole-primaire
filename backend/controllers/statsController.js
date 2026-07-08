@@ -49,12 +49,11 @@ exports.getPaiementsMensuel = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT 
         DATE_FORMAT(datePaie, '%Y-%m') as mois,
-        DATE_FORMAT(datePaie, '%b') as moisCourt,
         SUM(montant) as total,
         COUNT(*) as nbPaiements
       FROM Paiement
       WHERE datePaie >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-      GROUP BY DATE_FORMAT(datePaie, '%Y-%m'), DATE_FORMAT(datePaie, '%b')
+      GROUP BY DATE_FORMAT(datePaie, '%Y-%m')
       ORDER BY mois ASC
     `);
     res.json(rows);
@@ -68,11 +67,10 @@ exports.getInscriptionsMensuel = async (req, res) => {
     const [rows] = await pool.query(`
       SELECT
         DATE_FORMAT(created_at, '%Y-%m') AS mois,
-        DATE_FORMAT(created_at, '%b') AS moisCourt,
         COUNT(*) AS total
       FROM Eleve
       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-      GROUP BY DATE_FORMAT(created_at, '%Y-%m'), DATE_FORMAT(created_at, '%b')
+      GROUP BY DATE_FORMAT(created_at, '%Y-%m')
       ORDER BY mois ASC
     `);
     res.json(rows);
