@@ -13,8 +13,20 @@ const s = {
 };
 
 function Modal({ title, onClose, children }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>{title}</h3>
@@ -268,6 +280,7 @@ export default function Parents() {
         </Modal>
       )}
 
+      {showModal && (
         <Modal title={editing ? 'Modifier le parent' : 'Nouveau parent'} onClose={() => setShowModal(false)}>
           {error && <div style={{ marginBottom: '14px', padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', display: 'flex', gap: '8px', alignItems: 'center', color: '#dc2626', fontSize: '13px' }}><AlertCircle size={14} />{error}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -285,6 +298,7 @@ export default function Parents() {
             <button onClick={handleSubmit} style={s.btn('#10b981')}>{editing ? 'Mettre à jour le parent' : 'Enregistrer le parent'}</button>
           </div>
         </Modal>
+      )}
       </div>
     </Layout>
   );

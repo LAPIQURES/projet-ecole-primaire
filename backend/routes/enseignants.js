@@ -1,7 +1,6 @@
 const express = require('express');
 const c = require('../controllers/enseignantController');
-const auth = require('../middleware/auth');
-const { verifyAdmin, verifyEnseignant } = auth;
+const { verifyToken, verifyAdmin, verifyEnseignant, optionalAuth } = require('../middleware/auth');
 const pool = require('../database/db');
 const router = express.Router();
 
@@ -146,7 +145,7 @@ router.get('/me/classes-salles', verifyEnseignant, async (req, res) => {
   }
 });
 
-router.get('/:id', auth, c.getEnseignantById);
+router.get('/:id', verifyToken, c.getEnseignantById);
 router.post('/', verifyAdmin, c.createEnseignant);
 router.put('/:id', verifyAdmin, c.updateEnseignant);
 router.delete('/:id', verifyAdmin, c.deleteEnseignant);

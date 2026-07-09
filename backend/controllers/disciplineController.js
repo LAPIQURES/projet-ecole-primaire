@@ -19,12 +19,35 @@ exports.getDisciplineSummary = async (req, res) => {
 // Récupérer les problèmes de discipline d'un élève
 exports.getDisciplineEleve = async (req, res) => {
   try {
-    const [logs] = await pool.query(`
-      SELECT d.ID, d.libelle, d.points
-      FROM Discipline d
-      LIMIT 100
-    `);
+    const { matricule } = req.params;
+    const params = [];
+    let query = `
+      SELECT 
+        f.idFrequente,
+        f.matricule,
+        e.nom AS eleveNom,
+        e.prenom AS elevePrenom,
+        f.created_at,
+        f.commentaire,
+        s.libelle AS salle,
+        CASE 
+          WHEN LOWER(COALESCE(f.commentaire, '')) LIKE '%absent%' THEN 'Absent'
+          ELSE 'Présent'
+        END AS status
+      FROM Frequente f
+      LEFT JOIN Eleve e ON e.matricule = f.matricule
+      LEFT JOIN Salle s ON s.idSalle = f.idSalle
+      WHERE 1=1
+    `;
 
+    if (matricule) {
+      query += ` AND f.matricule = ?`;
+      params.push(matricule);
+    }
+
+    query += ` ORDER BY f.created_at DESC LIMIT 200`;
+
+    const [logs] = await pool.query(query, params);
     res.json(logs);
   } catch (error) {
     console.error('getDisciplineEleve error:', error.message);

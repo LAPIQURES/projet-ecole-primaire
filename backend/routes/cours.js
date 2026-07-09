@@ -1,6 +1,5 @@
 const express = require('express');
-const auth = require('../middleware/auth');
-const { verifyAdmin } = auth;
+const { verifyToken, verifyAdmin, verifyEnseignant, optionalAuth } = require('../middleware/auth');
 const pool = require('../database/db');
 
 const router = express.Router();
@@ -30,7 +29,7 @@ async function ensureCoursColumns() {
   }
 }
 
-router.get('/', auth, async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
     await ensureCoursColumns();
 
@@ -78,7 +77,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', verifyToken, async (req, res) => {
   try {
     await ensureCoursColumns();
 

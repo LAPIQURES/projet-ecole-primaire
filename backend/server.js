@@ -33,7 +33,12 @@ const http = require('http');
 const app = express();
 
 // Middleware
-app.use(cors());
+// Allow Authorization header explicitly so browser can send JWT from frontend dev server
+app.use(cors({
+  origin: true,
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+}));
 app.use(express.json());
 
 // Simple request logger for debugging / stability

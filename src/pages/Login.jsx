@@ -30,6 +30,8 @@ export default function Login() {
         const r = res.data.user?.role || 'admin'
         if (r === 'enseignant') navigate('/enseignant/dashboard')
         else if (r === 'parent') navigate('/parent/dashboard')
+        else if (r === 'directeur') navigate('/directeur/dashboard')
+        else if (r === 'intendant') navigate('/intendant/dashboard')
         else navigate('/dashboard')
       }, 1500)
     } catch (err) {

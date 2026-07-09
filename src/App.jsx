@@ -2,7 +2,10 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
+import DashboardDirecteur from './pages/DashboardDirecteur';
+import DashboardIntendant from './pages/DashboardIntendant';
 import DashboardEnseignant from './pages/DashboardEnseignant';
 import DashboardParent from './pages/DashboardParent';
 import Emploi from './pages/Emploi';
@@ -44,9 +47,11 @@ function ProtectedRoute({ children, allowedRoles }) {
   if (allowedRoles) {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (!allowedRoles.includes(user.role)) {
-      // Redirect to correct dashboard
+      // Redirect to correct dashboard based on role
       if (user.role === 'enseignant') return <Navigate to="/enseignant/dashboard" />;
       if (user.role === 'parent') return <Navigate to="/parent/dashboard" />;
+      if (user.role === 'directeur') return <Navigate to="/directeur/dashboard" />;
+      if (user.role === 'intendant') return <Navigate to="/intendant/dashboard" />;
       return <Navigate to="/dashboard" />;
     }
   }
@@ -104,6 +109,8 @@ function HomeRedirect() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   if (user.role === 'enseignant') return <Navigate to="/enseignant/dashboard" />;
   if (user.role === 'parent') return <Navigate to="/parent/dashboard" />;
+  if (user.role === 'directeur') return <Navigate to="/directeur/dashboard" />;
+  if (user.role === 'intendant') return <Navigate to="/intendant/dashboard" />;
   return <Navigate to="/dashboard" />;
 }
 
@@ -116,6 +123,8 @@ export default function App() {
 
         {/* ── ADMIN ── */}
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Dashboard /></ProtectedRoute>} />
+        <Route path="/directeur/dashboard" element={<ProtectedRoute allowedRoles={['directeur','admin','superadmin']}><DashboardDirecteur /></ProtectedRoute>} />
+        <Route path="/intendant/dashboard" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin']}><DashboardIntendant /></ProtectedRoute>} />
         <Route path="/eleves" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Eleves /></ProtectedRoute>} />
         <Route path="/classes" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Classes /></ProtectedRoute>} />
         <Route path="/enseignants" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Enseignants /></ProtectedRoute>} />
@@ -160,7 +169,7 @@ export default function App() {
         <Route path="/parent/paiements" element={<ProtectedRoute allowedRoles={['parent']}><DashboardParent /></ProtectedRoute>} />
         <Route path="/parent/*" element={<Navigate to="/parent/dashboard" replace />} />
 
-        <Route path="/" element={<HomeRedirect />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="*" element={<HomeRedirect />} />
       </Routes>
     </BrowserRouter>

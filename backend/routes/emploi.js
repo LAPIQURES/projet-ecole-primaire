@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const { verifyToken, verifyAdmin, verifyEnseignant, optionalAuth } = require('../middleware/auth');
 const emploiController = require('../controllers/emploiController');
 
-router.use(auth);
+router.use(verifyToken);
 
 router.get('/', emploiController.list);
 router.post('/', emploiController.create);

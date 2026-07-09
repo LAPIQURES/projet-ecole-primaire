@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const busController = require('../controllers/busController');
-const auth = require('../middleware/auth');
+const { verifyToken, verifyAdmin, verifyEnseignant, optionalAuth } = require('../middleware/auth');
 
-router.get('/bus', auth, busController.getBus);
-router.post('/bus', auth, busController.createBus);
-router.put('/bus/:id', auth, busController.updateBus);
+router.get('/bus', verifyToken, busController.getBus);
+router.post('/bus', verifyToken, busController.createBus);
+router.put('/bus/:id', verifyToken, busController.updateBus);
 
-router.get('/abonnements', auth, busController.getAbonnementsBus);
-router.post('/abonnements', auth, busController.createAbonnementBus);
-router.put('/abonnements/:id', auth, busController.updateAbonnementBus);
-router.delete('/abonnements/:id', auth, busController.deleteAbonnementBus);
+router.get('/abonnements', verifyToken, busController.getAbonnementsBus);
+router.post('/abonnements', verifyToken, busController.createAbonnementBus);
+router.put('/abonnements/:id', verifyToken, busController.updateAbonnementBus);
+router.delete('/abonnements/:id', verifyToken, busController.deleteAbonnementBus);
 
 module.exports = router;

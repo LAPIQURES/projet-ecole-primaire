@@ -48,6 +48,40 @@ const adminNavGroups = [
   },
 ];
 
+const directeurNavGroups = [
+  {
+    label: 'Principal',
+    items: [
+      { name: 'Tableau de bord Directeur', icon: LayoutDashboard, path: '/directeur/dashboard' },
+      { name: 'Rapports', icon: FileText, path: '/rapports' },
+    ],
+  },
+  {
+    label: 'Académique',
+    items: [
+      { name: 'Élèves', icon: Users, path: '/eleves' },
+      { name: 'Enseignants', icon: UserCheck, path: '/enseignants' },
+    ],
+  },
+];
+
+const intendantNavGroups = [
+  {
+    label: 'Trésorerie',
+    items: [
+      { name: 'Tableau de bord Intendant', icon: CreditCard, path: '/intendant/dashboard' },
+      { name: 'Paiements', icon: CreditCard, path: '/paiements' },
+      { name: 'Tranches', icon: ClipboardList, path: '/tranches' },
+    ],
+  },
+  {
+    label: 'Suivi',
+    items: [
+      { name: 'Elèves en impayé', icon: Users, path: '/paiements?filter=impayes' },
+    ],
+  },
+];
+
 const teacherNavGroups = [
   {
     label: 'Principal',
@@ -97,7 +131,11 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     ? teacherNavGroups
     : user?.role === 'parent'
       ? parentNavGroups
-      : adminNavGroups;
+      : user?.role === 'directeur'
+        ? directeurNavGroups
+        : user?.role === 'intendant'
+          ? intendantNavGroups
+          : adminNavGroups;
 
   const logout = () => {
     localStorage.removeItem('token');

@@ -1,5 +1,5 @@
 const express = require('express');
-const { verifyEnseignant, verifyAdmin, auth } = require('../middleware/auth');
+const { verifyToken, verifyEnseignant, verifyAdmin, optionalAuth } = require('../middleware/auth');
 const pool = require('../database/db');
 const router = express.Router();
 const socketHelper = require('../socket');
@@ -13,7 +13,7 @@ async function getTableColumns(tableName) {
 }
 
 // List recent evaluations
-router.get('/', auth, async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT ev.idEval, ev.matricule, ev.note, ev.appreciation, ev.created_at,
@@ -30,7 +30,7 @@ router.get('/', auth, async (req, res) => {
 
 // Create evaluation - allow both enseignant and admin
 const canCreateEvaluation = (req, res, next) => {
-  auth(req, res, () => {
+  verifyToken(req, res, () => {
     const role = req.user?.role || '';
     if (role !== 'enseignant' && role !== 'admin' && role !== 'superadmin') {
       return res.status(403).json({ error: 'Accès réservé' });

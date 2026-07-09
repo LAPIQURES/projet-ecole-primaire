@@ -6,7 +6,7 @@ import {
   getTrimestresAPI, createTrimestresAPI, updateTrimestresAPI, deleteTrimestresAPI,
   getBusAPI, createBusAPI, getAbonnementsBusAPI, createAbonnementBusAPI, updateAbonnementBusAPI,
   getTranchesAPI, createTrancheAPI, updateTrancheAPI, deleteTrancheAPI,
-  getElevesAPI
+  getElevesAPI, getProfileAPI, updateProfileAPI, changePasswordAPI
 } from '../services/api';
 
 const inp = {
@@ -75,6 +75,8 @@ export default function Parametres() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({});
+  const [profileForm, setProfileForm] = useState({ nom: '', prenom: '', email: '', mobile: '', username: '' });
+  const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [editingId, setEditingId] = useState(null);
 
   const yearRangeLabel = (start, end) => {
@@ -89,9 +91,10 @@ export default function Parametres() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [aRes, tRes, bRes, abRes, trRes, eRes] = await Promise.all([
+      const [aRes, tRes, bRes, abRes, trRes, eRes, pRes] = await Promise.all([
         getAnneesAPI(), getTrimestresAPI(), getBusAPI(),
-        getAbonnementsBusAPI(), getTranchesAPI(), getElevesAPI()
+        getAbonnementsBusAPI(), getTranchesAPI(), getElevesAPI(),
+        getProfileAPI().catch(() => ({ data: {} }))
       ]);
       setAnnees(Array.isArray(aRes.data) ? aRes.data : []);
       setTrimestres(Array.isArray(tRes.data) ? tRes.data : []);
@@ -99,6 +102,7 @@ export default function Parametres() {
       setAbonnements(Array.isArray(abRes.data) ? abRes.data : []);
       setTranches(Array.isArray(trRes.data) ? trRes.data : []);
       setEleves(Array.isArray(eRes.data) ? eRes.data : []);
+      if (pRes.data) setProfileForm(pRes.data);
     } catch (err) {
       setError('Erreur de chargement');
     } finally { setLoading(false); }
@@ -189,6 +193,35 @@ export default function Parametres() {
       else if (type === 'tranche') await deleteTrancheAPI(id);
       loadAll();
     } catch (err) { setError(err.message); }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      await updateProfileAPI(profileForm);
+      setSuccess('Profil mis à jour !');
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    } finally { setSaving(false); }
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+      setError('Les mots de passe ne correspondent pas');
+      return;
+    }
+    try {
+      setSaving(true);
+      await changePasswordAPI({ oldPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword });
+      setSuccess('Mot de passe mis à jour !');
+      setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    } finally { setSaving(false); }
   };
 
   const renderForm = () => {
@@ -314,6 +347,7 @@ export default function Parametres() {
       )}
 
       <div style={{ marginBottom: 20, display: 'flex', gap: 8, flexWrap: 'wrap', padding: 12, background: '#f8fafc', borderRadius: 10 }}>
+        <Tab label="👤 Profil" active={activeTab === 'profil'} onClick={() => { setActiveTab('profil'); setShowForm(false); }} />
         <Tab label="📅 Années" active={activeTab === 'annees'} onClick={() => { setActiveTab('annees'); setShowForm(false); }} />
         <Tab label="📆 Trimestres" active={activeTab === 'trimestres'} onClick={() => { setActiveTab('trimestres'); setShowForm(false); }} />
         <Tab label="🚌 Bus Scolaires" active={activeTab === 'bus'} onClick={() => { setActiveTab('bus'); setShowForm(false); }} />
@@ -323,13 +357,14 @@ export default function Parametres() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+          {activeTab === 'profil' && '👤 Mon Profil'}
           {activeTab === 'annees' && '📅 Années Académiques'}
           {activeTab === 'trimestres' && '📆 Trimestres'}
           {activeTab === 'bus' && '🚌 Bus Scolaires'}
           {activeTab === 'abonnements' && '🎫 Abonnements Bus'}
           {activeTab === 'tranches' && '💰 Tranches de Paiement'}
         </div>
-        {activeTab !== 'tranches' && (
+        {activeTab !== 'tranches' && activeTab !== 'profil' && (
           <button onClick={() => { setShowForm(!showForm); setEditingId(null); setFormData({}); setError(''); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 8, background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
             <Plus size={16} /> Ajouter
           </button>
@@ -353,6 +388,61 @@ export default function Parametres() {
               Annuler
             </button>
           </div>
+        </div>
+      )}
+
+      {/* PROFIL */}
+      {activeTab === 'profil' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 24 }}>
+          <form onSubmit={handleUpdateProfile} style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#1e293b' }}>Informations Personnelles</h3>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Nom</label>
+                <input type="text" value={profileForm.nom || ''} onChange={e => setProfileForm({ ...profileForm, nom: e.target.value })} style={inp} required />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Prénom</label>
+                <input type="text" value={profileForm.prenom || ''} onChange={e => setProfileForm({ ...profileForm, prenom: e.target.value })} style={inp} required />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Email</label>
+                <input type="email" value={profileForm.email || ''} onChange={e => setProfileForm({ ...profileForm, email: e.target.value })} style={inp} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Mobile</label>
+                <input type="text" value={profileForm.mobile || ''} onChange={e => setProfileForm({ ...profileForm, mobile: e.target.value })} style={inp} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Nom d'utilisateur</label>
+                <input type="text" value={profileForm.username || ''} onChange={e => setProfileForm({ ...profileForm, username: e.target.value })} style={inp} required />
+              </div>
+            </div>
+            <button type="submit" disabled={saving} style={{ marginTop: 20, padding: '10px 20px', background: saving ? '#93c5fd' : '#2563eb', color: '#fff', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </form>
+
+          <form onSubmit={handleUpdatePassword} style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #e2e8f0', height: 'fit-content' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 15, color: '#1e293b' }}>Changer le mot de passe</h3>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Mot de passe actuel</label>
+                <input type="password" value={pwdForm.currentPassword} onChange={e => setPwdForm({ ...pwdForm, currentPassword: e.target.value })} style={inp} required />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Nouveau mot de passe</label>
+                <input type="password" value={pwdForm.newPassword} onChange={e => setPwdForm({ ...pwdForm, newPassword: e.target.value })} style={inp} required minLength={6} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Confirmer le mot de passe</label>
+                <input type="password" value={pwdForm.confirmPassword} onChange={e => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })} style={inp} required minLength={6} />
+              </div>
+            </div>
+            <button type="submit" disabled={saving} style={{ marginTop: 20, padding: '10px 20px', background: saving ? '#93c5fd' : '#10b981', color: '#fff', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+              {saving ? 'Enregistrement...' : 'Mettre à jour le mot de passe'}
+            </button>
+          </form>
         </div>
       )}
 

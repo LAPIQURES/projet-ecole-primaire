@@ -1,5 +1,5 @@
 const express = require('express');
-const auth = require('../middleware/auth');
+const { verifyToken, verifyAdmin, verifyEnseignant, optionalAuth } = require('../middleware/auth');
 const pool = require('../database/db');
 
 const router = express.Router();
@@ -40,7 +40,7 @@ async function ensureTable() {
   }
 }
 
-router.get('/', auth, async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
     await ensureTable();
 
@@ -80,7 +80,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', verifyToken, async (req, res) => {
   try {
     await ensureTable();
     const [rows] = await pool.query(
@@ -94,7 +94,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', verifyToken, async (req, res) => {
   try {
     await ensureTable();
 
@@ -159,7 +159,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', verifyToken, async (req, res) => {
   try {
     await ensureTable();
 
@@ -221,7 +221,7 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', verifyToken, async (req, res) => {
   try {
     await ensureTable();
     await pool.query('DELETE FROM EvaluationProgramme WHERE id = ?', [req.params.id]);

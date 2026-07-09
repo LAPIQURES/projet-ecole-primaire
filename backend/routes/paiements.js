@@ -1,5 +1,5 @@
 const express = require('express');
-const auth = require('../middleware/auth');
+const { verifyToken, verifyAdmin, verifyEnseignant, optionalAuth } = require('../middleware/auth');
 const pool = require('../database/db');
 const router = express.Router();
 const socketHelper = require('../socket');
@@ -38,7 +38,7 @@ async function getTableColumns(tableName) {
 }
 
 // GET tous les paiements avec nom élève
-router.get('/', auth, async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
     // If caller is a parent, restrict to their children
     if (req.user && req.user.role === 'parent') {
@@ -73,7 +73,7 @@ router.get('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', verifyToken, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT p.*, e.nom AS eleveNom, e.prenom AS elevePrenom, e.matricule AS eleveMatricule,
@@ -96,7 +96,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // GET modes de paiement
-router.get('/modes', auth, async (req, res) => {
+router.get('/modes', verifyToken, async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT idMode, libelle FROM Mode WHERE actif = 1');
     res.json(rows);
@@ -104,7 +104,7 @@ router.get('/modes', auth, async (req, res) => {
 });
 
 // POST nouveau paiement
-router.post('/', auth, verifyParent, async (req, res) => {
+router.post('/', verifyToken, verifyParent, async (req, res) => {
   try {
     const { matricule, montant, idMode, commentaire, datePaie } = req.body;
     if (!matricule || !montant) return res.status(400).json({ error: 'Matricule et montant requis' });

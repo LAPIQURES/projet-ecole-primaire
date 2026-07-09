@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const inscriptionController = require('../controllers/inscriptionController');
-const auth = require('../middleware/auth');
+const { verifyToken, verifyAdmin, verifyEnseignant, optionalAuth } = require('../middleware/auth');
 const verifyParent = require('../middleware/verifyParent');
 
-router.get('/', auth, inscriptionController.getInscriptions);
-router.get('/:id', auth, inscriptionController.getInscriptionById);
-router.get('/eleve/:matricule', auth, verifyParent, inscriptionController.getInscriptionsByEleve);
-router.post('/', auth, inscriptionController.createInscription);
-router.put('/:id', auth, inscriptionController.updateInscription);
-router.delete('/:id', auth, inscriptionController.deleteInscription);
+router.get('/', verifyToken, inscriptionController.getInscriptions);
+router.get('/:id', verifyToken, inscriptionController.getInscriptionById);
+router.get('/eleve/:matricule', verifyToken, verifyParent, inscriptionController.getInscriptionsByEleve);
+router.post('/', verifyToken, inscriptionController.createInscription);
+router.put('/:id', verifyToken, inscriptionController.updateInscription);
+router.delete('/:id', verifyToken, inscriptionController.deleteInscription);
 
 module.exports = router;

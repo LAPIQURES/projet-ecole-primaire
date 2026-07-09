@@ -1,118 +1,74 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 const pool = require('../database/db');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const config = require('../config');
 
-// LOGIN UNIFIÉ — cherche dans Admin ET Personne
+const roleMap = {
+	1: 'superadmin',
+	2: 'admin',
+	3: 'enseignant',
+	4: 'parent',
+	5: 'directeur',
+	6: 'intendant',
+};
+
 exports.login = async (req, res) => {
-  try {
-    const { email, password, username, login, credential: rawCredential } = req.body;
-    const credential = rawCredential || login || email || username;
-    if (!credential || !password) return res.status(400).json({ error: 'Identifiant et mot de passe requis' });
+	try {
+		const { login, password } = req.body;
+		if (!login || !password) return res.status(400).json({ message: 'login et password requis' });
 
-    // 1. Chercher dans Admin
-    let admins;
-    try {
-      console.log('DB: querying Admin for', credential);
-      [admins] = await pool.query(
-        'SELECT * FROM Admin WHERE username = ? AND actif = 1',
-        [credential]
-      );
-      console.log('DB: Admin query returned', (admins && admins.length) || 0);
-    } catch (dbErr) {
-      console.error('DB query error (Admin):', dbErr && dbErr.message, dbErr);
-      return res.status(500).json({ error: 'Erreur base de données' });
-    }
-    if (admins.length > 0) {
-      const admin = admins[0];
-      const ok = admin.password.startsWith('$2') ? await bcrypt.compare(password, admin.password) : password === admin.password;
-      if (!ok) return res.status(401).json({ error: 'Mot de passe incorrect' });
-      const roleMap = { 1: 'superadmin', 2: 'admin', 3: 'enseignant', 4: 'parent' };
-      const role = roleMap[admin.typeAdmin] || 'admin';
-      const token = jwt.sign({ id: admin.ID, username: admin.username, role, type: 'admin', typeAdmin: admin.typeAdmin }, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
-      return res.json({ success: true, token, user: { id: admin.ID, nom: admin.nom, username: admin.username, role, type: 'admin', typeAdmin: admin.typeAdmin } });
-    }
+		// Try Admin table first (Admin table uses `username` column)
+		const [admins] = await pool.query('SELECT * FROM Admin WHERE username = ? LIMIT 1', [login]);
+		if (admins && admins.length) {
+			const admin = admins[0];
+			const hash = admin.password || admin.pass || '';
+			const ok = hash && hash.startsWith('$2') ? await bcrypt.compare(password, hash) : password === hash;
+			if (!ok) return res.status(401).json({ message: 'Identifiants invalides' });
+			const role = roleMap[admin.typeAdmin] || 'admin';
+			const token = jwt.sign({ id: admin.ID || admin.id, login: admin.login || admin.username, role, typeAdmin: admin.typeAdmin }, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
+			return res.json({ token, user: { id: admin.ID || admin.id, login: admin.login || admin.username, role, typeAdmin: admin.typeAdmin } });
+		}
 
-    // 2. Chercher dans Personne (enseignants et parents)
-    console.log('DB: querying Personne for', credential);
-    let personnes;
-    try {
-      [personnes] = await pool.query('SELECT * FROM Personne WHERE username = ? LIMIT 1', [credential]);
-      console.log('DB: Personne query returned', (personnes && personnes.length) || 0);
-    } catch (dbErr) {
-      console.error('DB query error (Personne):', dbErr && dbErr.message);
-      return res.status(500).json({ error: 'Erreur base de données' });
-    }
-    
-    if (personnes.length === 0) return res.status(401).json({ error: 'Utilisateur non trouvé' });
-    const personne = personnes[0];
-    
-    console.log('DB: Personne found, checking password for typePersonne=', personne.typePersonne);
-    const okP = personne.password.startsWith('$2') ? await bcrypt.compare(password, personne.password) : password === personne.password;
-    if (!okP) return res.status(401).json({ error: 'Mot de passe incorrect' });
+		// Fallback to Personne
+		const [people] = await pool.query('SELECT * FROM Personne WHERE username = ? OR login = ? LIMIT 1', [login, login]);
+		if (people && people.length) {
+			const p = people[0];
+			const hash = p.password || p.pass || '';
+			const ok = hash && hash.startsWith('$2') ? await bcrypt.compare(password, hash) : password === hash;
+			if (!ok) return res.status(401).json({ message: 'Identifiants invalides' });
+			const role = p.typePersonne === 2 ? 'enseignant' : p.typePersonne === 3 ? 'parent' : 'personne';
+			const token = jwt.sign({ id: p.idPers || p.ID || p.id, login: p.username || p.login, role }, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
+			return res.json({ token, user: { id: p.idPers || p.ID || p.id, login: p.username || p.login, role } });
+		}
 
-    // typePersonne: 2=enseignant, 3=parent
-    const roleP = personne.typePersonne === 2 ? 'enseignant' : personne.typePersonne === 3 ? 'parent' : 'user';
-    console.log('DB: Role determined as', roleP);
-
-    // Récupérer infos supplémentaires selon le rôle
-    let extra = {};
-    if (roleP === 'enseignant') {
-      const [ens] = await pool.query('SELECT idEnseignant, idCours FROM Enseignant WHERE idPers = ? AND Actif = 1', [personne.idPers]);
-      extra = ens.length > 0 ? { idEnseignant: ens[0].idEnseignant, idCours: ens[0].idCours } : {};
-    } else if (roleP === 'parent') {
-      const [par] = await pool.query(`SELECT pr.idParent, pr.matricule, e.nom AS eleveNom, e.prenom AS elevePrenom 
-        FROM Parents pr LEFT JOIN Eleve e ON e.matricule = pr.matricule WHERE pr.idPers = ?`, [personne.idPers]);
-      extra = par.length > 0 ? { idParent: par[0].idParent, matricule: par[0].matricule, eleveNom: par[0].eleveNom, elevePrenom: par[0].elevePrenom } : {};
-    }
-
-    const token = jwt.sign({ id: personne.idPers, username: personne.username, role: roleP, type: 'personne', typePersonne: personne.typePersonne, ...extra }, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
-    console.log('DB: Token generated for enseignant, returning login success');
-    return res.json({
-      success: true, token,
-      user: { id: personne.idPers, nom: personne.nom, prenom: personne.prenom, username: personne.username, role: roleP, type: 'personne', typePersonne: personne.typePersonne, ...extra }
-    });
-  } catch (error) {
-    console.error('Erreur login:', error);
-    res.status(500).json({ error: error.message });
-  }
+		return res.status(401).json({ message: 'Utilisateur introuvable' });
+	} catch (err) {
+		console.error('login error', err && err.message ? err.message : err);
+		return res.status(500).json({ message: 'Erreur serveur' });
+	}
 };
 
-exports.me = async (req, res) => res.json({ user: req.user });
+exports.me = async (req, res) => {
+	return res.json({ user: req.user || null });
+};
 
-// SIGNUP simple: crée Personne puis Enseignant/Parent selon le rôle
 exports.signup = async (req, res) => {
-  try {
-    const { role, nom, prenom, username, email, password, mobile, phone, specialite, nomEnfant, etablissement } = req.body;
-    if (!role || !nom || !prenom || !username || !password) return res.status(400).json({ error: 'Champs requis manquants' });
-
-    // create idPers
-    const [next] = await pool.query('SELECT COALESCE(MAX(idPers),0)+1 AS nextId FROM Personne');
-    const idPers = next[0]?.nextId || 1000;
-
-    const bcryptPwd = await bcrypt.hash(password, 10);
-
-    // Insert Personne with defaults
-    await pool.query(
-      `INSERT INTO Personne (idPers, nom, prenom, mobile, phone, username, password, dateNaissance, lieuNaissance, typePersonne, idAdmin, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, '2000-01-01', '', ?, ?, NOW())`,
-      [idPers, nom, prenom, mobile || '', phone || '', username || email || `user${Date.now()}`, bcryptPwd, role === 'enseignant' ? 2 : role === 'parent' ? 3 : 1, 1]
-    );
-
-    // create role-specific record
-    if (role === 'enseignant') {
-      await pool.query('INSERT INTO Enseignant (idPers, idCours, Actif, idAdmin, created_at) VALUES (?, NULL, 1, ?, NOW())', [idPers, 1]);
-    } else if (role === 'parent') {
-      await pool.query('INSERT INTO Parents (idPers, matricule, idAdmin, created_at) VALUES (?, ?, ?, NOW())', [idPers, nomEnfant || null, 1]);
-    } else if (role === 'administrateur') {
-      // rudimentary Admin creation (typeAdmin 2 = admin)
-      const uname = username || email || `admin${Date.now()}`;
-      await pool.query('INSERT INTO Admin (username, password, nom, typeAdmin, actif, created_at) VALUES (?, ?, ?, ?, 1, NOW())', [uname, bcryptPwd, `${prenom} ${nom}`, 2]);
-    }
-
-    res.status(201).json({ message: 'Compte créé' });
-  } catch (error) {
-    console.error('signup error:', error.message);
-    res.status(500).json({ error: error.message });
-  }
+	try {
+		const { role, nom, prenom, username, email, password } = req.body;
+		if (!username || !password || !nom || !prenom) return res.status(400).json({ error: 'Champs requis manquants' });
+		const [next] = await pool.query('SELECT COALESCE(MAX(idPers),0)+1 AS nextId FROM Personne');
+		const idPers = next[0]?.nextId || Date.now();
+		const hashed = await bcrypt.hash(password, 10);
+		const typePersonne = role === 'enseignant' ? 2 : role === 'parent' ? 3 : 1;
+		await pool.query('INSERT INTO Personne (idPers, nom, prenom, username, password, typePersonne, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())', [idPers, nom, prenom, username, hashed, typePersonne]);
+		if (role === 'enseignant') {
+			await pool.query('INSERT INTO Enseignant (idPers, Actif, created_at) VALUES (?, 1, NOW())', [idPers]);
+		}
+		return res.status(201).json({ message: 'Compte créé' });
+	} catch (err) {
+		console.error('signup error', err && err.message ? err.message : err);
+		return res.status(500).json({ error: 'Erreur serveur' });
+	}
 };
+
+

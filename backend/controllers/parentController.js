@@ -34,8 +34,8 @@ exports.getParentById = async (req, res) => {
     const parent = rows[0];
     
     const [children] = await pool.query(`
-      SELECT e.matricule, e.nom, e.prenom, e.photoURL,
-        s.libelle AS salle, c.libelle AS classe, cy.libelle AS cycle
+      SELECT e.matricule, e.nom, e.prenom, e.photoURL, e.dateNaissance,
+        s.libelle AS salle, s.idSalle, c.libelle AS classe, c.idClasse, cy.libelle AS cycle
       FROM ParentEleve pe
       JOIN Eleve e ON e.matricule = pe.matricule
       LEFT JOIN Frequente f ON f.matricule = e.matricule
@@ -71,8 +71,8 @@ exports.createParent = async (req, res) => {
     );
 
     const [result] = await pool.query(
-      `INSERT INTO Parents (idPers, idAdmin, created_at) VALUES (?, ?, NOW())`,
-      [idPers, idAdmin]
+      `INSERT INTO Parents (idPers, matricule, idAdmin, created_at) VALUES (?, ?, ?, NOW())`,
+      [idPers, matricule || null, idAdmin]
     );
 
     // If matricule provided, create parent-eleve link
@@ -115,6 +115,10 @@ exports.updateParent = async (req, res) => {
     updateValues.push(parent[0].idPers);
     
     await pool.query(`UPDATE Personne SET ${updateFields.join(',')} WHERE idPers=?`, updateValues);
+
+    if (matricule !== undefined) {
+      await pool.query('UPDATE Parents SET matricule = ? WHERE idParent = ?', [matricule || null, req.params.id]);
+    }
     
     // Handle matricule - add/update parent-eleve link
     if (matricule !== undefined && matricule) {
@@ -142,8 +146,8 @@ exports.updateParent = async (req, res) => {
       WHERE pr.idParent = ?`, [req.params.id]);
     
     const [children] = await pool.query(`
-      SELECT e.matricule, e.nom, e.prenom, e.photoURL,
-        s.libelle AS salle, c.libelle AS classe, cy.libelle AS cycle
+      SELECT e.matricule, e.nom, e.prenom, e.photoURL, e.dateNaissance,
+        s.libelle AS salle, s.idSalle, c.libelle AS classe, c.idClasse, cy.libelle AS cycle
       FROM ParentEleve pe
       JOIN Eleve e ON e.matricule = pe.matricule
       LEFT JOIN Frequente f ON f.matricule = e.matricule

@@ -41,10 +41,6 @@ exports.createBulletin = async (req, res) => {
       ORDER BY c.libelle
     `, [matricule, idTrimes]);
 
-    if (evaluations.length === 0) {
-      return res.status(400).json({ error: 'Aucune évaluation trouvée pour ce trimestre' });
-    }
-
     // Vérifier si bulletin n'existe pas déjà
     const [existing] = await pool.query(
       'SELECT idBulletin FROM Bulletin WHERE matricule = ? AND idTrimes = ? AND idAnnee = ?',
@@ -83,7 +79,7 @@ exports.createBulletin = async (req, res) => {
 
     res.status(201).json({ 
       idBulletin, 
-      message: 'Bulletin créé avec succès',
+      message: evaluations.length > 0 ? 'Bulletin créé avec succès' : 'Bulletin brouillon créé sans évaluations',
       evaluations: evaluations.length,
       moyenneGenerale
     });

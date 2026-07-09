@@ -616,3 +616,35 @@ CREATE INDEX idx_admin_username ON Admin(username);
 CREATE INDEX idx_eleve_actif ON Eleve(actif);
 CREATE INDEX idx_cours_actif ON Cours(actif);
 CREATE INDEX idx_enseignant_actif ON Enseignant(Actif);
+
+-- Bulletins
+CREATE TABLE IF NOT EXISTS Bulletin (
+  idBulletin INT AUTO_INCREMENT PRIMARY KEY,
+  matricule VARCHAR(50) DEFAULT NULL,
+  idAnnee INT DEFAULT NULL,
+  idTrimes INT DEFAULT NULL,
+  appreciation TEXT,
+  idPers INT DEFAULT NULL,
+  statut VARCHAR(50) DEFAULT 'brouillon',
+  dateGeneration DATETIME DEFAULT NULL,
+  moyenneGenerale DECIMAL(6,2) DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (matricule) REFERENCES Eleve(matricule) ON DELETE SET NULL,
+  FOREIGN KEY (idAnnee) REFERENCES AnneeAcademique(idAnnee) ON DELETE SET NULL,
+  FOREIGN KEY (idTrimes) REFERENCES Trimestre(idTrimes) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS BulletinDetail (
+  idDetail INT AUTO_INCREMENT PRIMARY KEY,
+  idBulletin INT DEFAULT NULL,
+  idCours INT DEFAULT NULL,
+  libelleCours VARCHAR(255) DEFAULT '',
+  note DECIMAL(6,2) DEFAULT 0,
+  appreciation TEXT,
+  coefficient DECIMAL(5,2) DEFAULT 1.0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (idBulletin) REFERENCES Bulletin(idBulletin) ON DELETE CASCADE,
+  FOREIGN KEY (idCours) REFERENCES Cours(idCours) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE INDEX IF NOT EXISTS idx_bulletin_matricule ON Bulletin(matricule);
