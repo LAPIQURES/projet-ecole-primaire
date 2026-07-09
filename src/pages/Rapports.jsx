@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
-import { getRapportsElevesAPI, deleteRapportEleveAPI, getRapportsEnseignantsAPI, deleteRapportEnseignantAPI } from '../services/api';
-import { Trash2, RefreshCw, ShieldAlert, GraduationCap, Search } from 'lucide-react';
+import { getRapportsElevesAPI, deleteRapportEleveAPI, getRapportsEnseignantsAPI, deleteRapportEnseignantAPI, createRapportEleveAPI, createRapportEnseignantAPI } from '../services/api';
+import { Trash2, RefreshCw, ShieldAlert, GraduationCap, Search, Plus, X } from 'lucide-react';
 
 export default function Rapports() {
   const [eleveRapports, setEleveRapports] = useState([]);
@@ -9,6 +9,14 @@ export default function Rapports() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+
+  const [showForm, setShowForm] = useState(false);
+  const [formType, setFormType] = useState('eleve');
+  const [formData, setFormData] = useState({ 
+    libelle: '', matricule: '', annee: '2024-2025', points: '', commentaire: '', event_date: new Date().toISOString().split('T')[0],
+    reference: '', categorie: '', idEnseignant: '', titre: '', details: ''
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -24,6 +32,32 @@ export default function Rapports() {
 
   const delEleve = async (id) => { if (!window.confirm('Supprimer ce rapport élève ?')) return; try { await deleteRapportEleveAPI(id); await load(); } catch (err) { setError(err.message); } };
   const delEns = async (id) => { if (!window.confirm('Supprimer ce rapport enseignant ?')) return; try { await deleteRapportEnseignantAPI(id); await load(); } catch (err) { setError(err.message); } };
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      if (formType === 'eleve') {
+        if (!formData.matricule || !formData.libelle) throw new Error('Matricule et libellé obligatoires.');
+        await createRapportEleveAPI({
+          libelle: formData.libelle, matricule: formData.matricule, annee: formData.annee,
+          points: formData.points || 0, commentaire: formData.commentaire, event_date: formData.event_date
+        });
+      } else {
+        if (!formData.idEnseignant || !formData.titre) throw new Error('ID Enseignant et titre obligatoires.');
+        await createRapportEnseignantAPI(formData.idEnseignant, {
+          reference: formData.reference, categorie: formData.categorie, titre: formData.titre, details: formData.details
+        });
+      }
+      setShowForm(false);
+      setFormData({ libelle: '', matricule: '', annee: '2024-2025', points: '', commentaire: '', event_date: new Date().toISOString().split('T')[0], reference: '', categorie: '', idEnseignant: '', titre: '', details: '' });
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error || err.message || 'Erreur lors de la création');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const elevesFiltered = useMemo(() => {
     return eleveRapports.filter((r) => {
@@ -67,10 +101,91 @@ export default function Rapports() {
           <Search size={16} style={{ position: 'absolute', left: 12, top: 12, color: '#94a3b8' }} />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un rapport…" style={{ width: '100%', padding: '10px 12px 10px 38px', borderRadius: 12, border: '1px solid #e2e8f0', fontFamily: 'inherit' }} />
         </div>
-        <button onClick={load} style={{ padding: '10px 14px', borderRadius: 12, background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <RefreshCw size={14} /> Actualiser
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setShowForm(true)} style={{ padding: '10px 14px', borderRadius: 12, background: '#0062ff', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Plus size={14} /> Nouveau Rapport
+          </button>
+          <button onClick={load} style={{ padding: '10px 14px', borderRadius: 12, background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <RefreshCw size={14} /> Actualiser
+          </button>
+        </div>
       </div>
+
+      {showForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 480, boxShadow: '0 24px 64px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>Créer un rapport</div>
+              <button onClick={() => setShowForm(false)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}><X size={16} /></button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+              <button type="button" onClick={() => setFormType('eleve')} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', background: formType === 'eleve' ? '#0062ff' : '#f1f5f9', color: formType === 'eleve' ? '#fff' : '#64748b', cursor: 'pointer', fontWeight: 600 }}>Élève</button>
+              <button type="button" onClick={() => setFormType('enseignant')} style={{ flex: 1, padding: 10, borderRadius: 10, border: 'none', background: formType === 'enseignant' ? '#0062ff' : '#f1f5f9', color: formType === 'enseignant' ? '#fff' : '#64748b', cursor: 'pointer', fontWeight: 600 }}>Enseignant</button>
+            </div>
+
+            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {formType === 'eleve' ? (
+                <>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Matricule Élève *</label>
+                    <input type="text" value={formData.matricule} onChange={e => setFormData({ ...formData, matricule: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box' }} required />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Titre / Libellé *</label>
+                    <input type="text" value={formData.libelle} onChange={e => setFormData({ ...formData, libelle: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box' }} required />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Points (Retrait)</label>
+                      <input type="number" value={formData.points} onChange={e => setFormData({ ...formData, points: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Date</label>
+                      <input type="date" value={formData.event_date} onChange={e => setFormData({ ...formData, event_date: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Commentaire</label>
+                    <textarea value={formData.commentaire} onChange={e => setFormData({ ...formData, commentaire: e.target.value })} rows={3} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box', resize: 'vertical' }} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>ID Enseignant *</label>
+                    <input type="number" value={formData.idEnseignant} onChange={e => setFormData({ ...formData, idEnseignant: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box' }} required />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Catégorie</label>
+                    <select value={formData.categorie} onChange={e => setFormData({ ...formData, categorie: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
+                      <option value="">-- Choisir --</option>
+                      <option value="Absence">Absence</option>
+                      <option value="Avertissement">Avertissement</option>
+                      <option value="Félicitation">Félicitation</option>
+                      <option value="Autre">Autre</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Titre *</label>
+                    <input type="text" value={formData.titre} onChange={e => setFormData({ ...formData, titre: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box' }} required />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Détails</label>
+                    <textarea value={formData.details} onChange={e => setFormData({ ...formData, details: e.target.value })} rows={3} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box', resize: 'vertical' }} />
+                  </div>
+                </>
+              )}
+              
+              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                <button type="submit" disabled={saving} style={{ flex: 1, padding: '12px', background: saving ? '#93c5fd' : '#0062ff', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
+                  {saving ? 'Enregistrement…' : 'Enregistrer le rapport'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {error && <div style={{ color:'#dc2626', marginBottom:10 }}>{error}</div>}
 

@@ -611,6 +611,15 @@ export default function Emploi() {
         .card{background:#fff;border:1px solid #edf2f7;border-radius:16px;box-shadow:0 10px 26px rgba(15,23,42,0.06)}
         .tab{padding:10px 14px;border-radius:12px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-weight:900;font-size:13px;color:#475569}
         .tabActive{border-color:${BLUE};color:${BLUE};box-shadow:0 10px 22px rgba(0,98,255,0.10)}
+        .schedule-grid { display: grid; grid-template-columns: 80px repeat(5, 1fr); gap: 1px; background: #e2e8f0; padding: 1px; }
+        .schedule-cell { background: white; padding: 12px; text-align: center; font-size: 12px; min-height: 64px; }
+        .schedule-header { background: #0062ff; color: white; font-weight: 800; padding: 12px; }
+        .schedule-hour { background: #f1f5f9; font-weight: 700; color: #64748b; }
+        .schedule-empty { background: #fafbfc; cursor: pointer; }
+        .schedule-empty:hover { background: #f1f5f9; }
+        .schedule-item { background: linear-gradient(135deg, #0062ff, #0047a3); color: white; padding: 8px; border-radius: 6px; font-weight: 700; font-size: 11px; line-height: 1.3; cursor: pointer; display: flex; flexDirection: column; justify-content: center; height: 100%; box-shadow: 0 4px 12px rgba(0,98,255,0.3); }
+        .schedule-item-continued { background: #eff6ff; color: #0062ff; font-weight: 800; opacity: 0.8; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px; height: 100%; border: 1px dashed #bfdbfe; }
+        @media (max-width: 1024px) { .schedule-grid { grid-template-columns: 70px repeat(2, 1fr); } }
       `}</style>
 
       {success && (
@@ -719,33 +728,29 @@ export default function Emploi() {
       </div>
 
       {/* stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 16 }}>
-        {[{
-          icon: <CalendarDays size={18} color={BLUE} />,
-          title: 'Créneaux',
-          value: items.length,
-          subtitle: 'au total',
-        }, {
-          icon: <DoorOpen size={18} color={ORANGE} />,
-          title: 'Salles',
-          value: salles.length,
-          subtitle: 'disponibles',
-        }, {
-          icon: <Users size={18} color="#7c3aed" />,
-          title: 'Enseignants',
-          value: profs.length,
-          subtitle: 'chargés',
-        }].map((c) => (
-          <div key={c.title} className="card" style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 14, background: 'linear-gradient(135deg, #0062ff, #ffa000)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>{c.icon}</div>
-              <div>
-                <div style={{ fontWeight: 950, color: '#0f172a', fontSize: 13 }}>{c.title}</div>
-                <div style={{ fontSize: 18, fontWeight: 950, color: '#0f172a', marginTop: 2 }}>{c.value} <span style={{ fontSize: 12, color: '#64748b', fontWeight: 800 }}>{c.subtitle}</span></div>
-              </div>
-            </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 16 }}>
+        <div style={{ background: 'white', borderRadius: 12, padding: 16, border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase' }}>Total Cours</div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#0f172a' }}>{selectedItems.length}</div>
+        </div>
+        <div style={{ background: 'white', borderRadius: 12, padding: 16, border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase' }}>Mes Classes</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#0062ff' }}>
+            {Array.from(new Set(selectedItems.map(it => it.idClasse).filter(Boolean))).length}
           </div>
-        ))}
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+            {Array.from(new Set(selectedItems.map(it => classeById.get(String(it.idClasse))?.libelle || it.idClasse).filter(Boolean))).join(', ') || '—'}
+          </div>
+        </div>
+        <div style={{ background: 'white', borderRadius: 12, padding: 16, border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase' }}>Mes Salles</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#ffa000' }}>
+            {Array.from(new Set(selectedItems.map(it => it.idSalle).filter(Boolean))).length}
+          </div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+            {Array.from(new Set(selectedItems.map(it => salleById.get(String(it.idSalle))?.libelle || it.idSalle).filter(Boolean))).join(', ') || '—'}
+          </div>
+        </div>
       </div>
 
       {/* content */}
@@ -786,31 +791,78 @@ export default function Emploi() {
             </table>
 
             <div style={{ marginTop: 10, fontSize: 12, color: '#94a3b8' }}>
-              Astuce: les salles sont déduites des cours (idEnseignant→idSalle) et/ou des créneaux. L\'affectation manuelle enregistre une suggestion via l\'API enseignant.
+              Astuce: les salles sont déduites des cours (idEnseignant→idSalle) et/ou des créneaux. L'affectation manuelle enregistre une suggestion via l'API enseignant.
             </div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: 10, background: '#f8fafc', border: '1px solid #e2e8f0', width: 86 }} />
-                  {DAYS.map((d) => (
-                    <th key={d.value} style={{ padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'left', fontSize: 12, fontWeight: 950, color: '#0f172a' }}>{d.label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {HOURS.map((h) => (
-                  <tr key={h}>
-                    <td style={{ padding: 10, background: '#f8fafc', border: '1px solid #e2e8f0', fontWeight: 950, color: '#0f172a', fontSize: 12, whiteSpace: 'nowrap' }}>
-                      {h}h - {h + 1}h
-                    </td>
-                    {DAYS.map((d) => renderCell(d.value, h))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ background: 'white', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0' }}>
+            <div className="schedule-grid">
+              <div className="schedule-cell schedule-header">Heure</div>
+              {DAYS.map((day) => (
+                <div key={day.value} className="schedule-cell schedule-header">
+                  {day.short}
+                </div>
+              ))}
+
+              {HOURS.map((hour) => (
+                <React.Fragment key={`hour-${hour}`}>
+                  <div className="schedule-cell schedule-hour">{String(hour).padStart(2, '0')}:00</div>
+                  {DAYS.map((day) => {
+                    const key = `${day.value}-${hour}`;
+                    const info = cellMap.get(key);
+                    const hasSelection = selectedMode === 'classe' ? Boolean(selectedClasse) : Boolean(selectedSalle);
+
+                    if (!hasSelection) {
+                      return <div key={key} className="schedule-cell schedule-empty" style={{ cursor: 'not-allowed' }}><span style={{ opacity: 0.3 }}>—</span></div>;
+                    }
+
+                    if (!info) {
+                      return (
+                        <div
+                          key={key}
+                          className="schedule-cell schedule-empty"
+                          onClick={() => openCreate(day.value, `${String(hour).padStart(2, '0')}:00`)}
+                          title="Ajouter un cours"
+                        />
+                      );
+                    }
+
+                    const { item: it, isStart } = info;
+                    const prof = it.idProf ? profByIdPers.get(String(it.idProf)) : null;
+                    const salle = it.idSalle ? salleById.get(String(it.idSalle)) : null;
+                    const classe = it.idClasse ? classeById.get(String(it.idClasse)) : null;
+
+                    if (!isStart) {
+                      return (
+                        <div key={key} className="schedule-cell" style={{ padding: 4 }}>
+                          <div className="schedule-item-continued" onClick={() => openDetails(it)} title="Voir détails (suite)">
+                            {it.subject || 'Cours'}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={key} className="schedule-cell" style={{ padding: 4 }}>
+                        <div className="schedule-item" onClick={() => openDetails(it)} title="Voir détails">
+                          <div style={{ fontWeight: 900, marginBottom: 4 }}>{it.subject || 'Cours'}</div>
+                          <div style={{ fontSize: 10, opacity: 0.9, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <DoorOpen size={10} />
+                            {salle ? salle.libelle : it.idSalle || 'Salle'}
+                          </div>
+                          {selectedMode === 'salle' && classe && (
+                            <div style={{ fontSize: 10, opacity: 0.9, marginTop: 2 }}>{classe.libelle}</div>
+                          )}
+                          {selectedMode === 'classe' && prof && (
+                            <div style={{ fontSize: 10, opacity: 0.9, marginTop: 2 }}>{prof.prenom} {prof.nom}</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
 
             {!((selectedMode === 'classe' ? selectedClasse : selectedSalle)) && (
               <div style={{ padding: 16, fontSize: 12, color: '#94a3b8' }}>

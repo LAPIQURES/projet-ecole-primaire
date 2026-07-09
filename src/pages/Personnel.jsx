@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
-import { getPersonnelAPI, createPersonnelAPI, updatePersonnelAPI, deletePersonnelAPI } from '../services/api';
+import { getPersonnelAPI, createPersonnelAPI, updatePersonnelAPI, deletePersonnelAPI, getPostesAPI, getFonctionsAPI } from '../services/api';
+import axios from 'axios';
 
 const initialForm = { idPers: '', idPoste: '', idFonction: '', dateDebut: '', dateFin: '', actif: 1 };
+const API_URL = 'http://localhost:5000/api';
+const auth = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 const Personnel = () => {
   const [postes, setPostes] = useState([]);
   const [fonctions, setFonctions] = useState([]);
   const [personnel, setPersonnel] = useState([]);
+  const [personnes, setPersonnes] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
@@ -18,18 +22,17 @@ const Personnel = () => {
   const loadAll = async () => {
     try {
       setError('');
-      const [pRes, fRes, personnelRes] = await Promise.all([
-        fetch('/api/postes'),
-        fetch('/api/fonctions'),
+      const [pRes, fRes, personnelRes, personnesRes] = await Promise.all([
+        getPostesAPI(),
+        getFonctionsAPI(),
         getPersonnelAPI(),
+        axios.get(`${API_URL}/personnel/personnes/list`, auth()),
       ]);
 
-      const postesData = await pRes.json();
-      const fonctionsData = await fRes.json();
-
-      setPostes(Array.isArray(postesData) ? postesData : []);
-      setFonctions(Array.isArray(fonctionsData) ? fonctionsData : []);
+      setPostes(Array.isArray(pRes.data) ? pRes.data : []);
+      setFonctions(Array.isArray(fRes.data) ? fRes.data : []);
       setPersonnel(Array.isArray(personnelRes.data) ? personnelRes.data : []);
+      setPersonnes(Array.isArray(personnesRes.data) ? personnesRes.data : []);
     } catch (err) {
       console.error(err);
       setError('Erreur lors du chargement des données.');
@@ -45,7 +48,7 @@ const Personnel = () => {
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
     if (!form.idPers) {
-      setError('Veuillez renseigner l’identifiant de la personne (idPers).');
+      setError('Veuillez sélectionner la personne (idPers).');
       return;
     }
 
@@ -117,8 +120,15 @@ const Personnel = () => {
             <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 700, color: '#334155' }}>idPers (Personne)</label>
-                  <input value={form.idPers} onChange={(e) => setForm({ ...form, idPers: e.target.value })} placeholder="Id de la personne" style={{ width: '100%', padding: 12, borderRadius: 12, border: '1px solid #e2e8f0' }} />
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 700, color: '#334155' }}>Personne</label>
+                  <select value={form.idPers} onChange={(e) => setForm({ ...form, idPers: e.target.value })} style={{ width: '100%', padding: 12, borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                    <option value="">-- Sélectionner --</option>
+                    {personnes.map(p => (
+                      <option key={p.idPers} value={p.idPers}>
+                        {p.nom || p.prenom ? `${p.nom || ''} ${p.prenom || ''}`.trim() : `Personne #${p.idPers}`}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 700, color: '#334155' }}>Statut actif</label>

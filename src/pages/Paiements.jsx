@@ -12,6 +12,8 @@ const inp = {
 };
 
 export default function Paiements({ noLayout = false }) {
+  const userRole = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').role || ''; } catch { return ''; } })();
+  const isParent = userRole === 'parent';
   const [paiements, setPaiements] = useState([]);
   const [modes, setModes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,86 @@ export default function Paiements({ noLayout = false }) {
   const [scolariteInfo, setScolariteInfo] = useState(null);
   const [paymentOption, setPaymentOption] = useState('custom');
   const [formData, setFormData] = useState({ matricule: '', montant: '', idMode: '', commentaire: '', datePaie: new Date().toISOString().split('T')[0] });
+
+  const handlePrintReceipt = (payment) => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Reçu de Paiement #${payment.idPaie}</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px; color: #0f172a; }
+            .receipt { max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; padding: 30px; border-radius: 12px; }
+            .header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 20px; }
+            .school-name { font-size: 24px; font-weight: 900; color: #0062ff; }
+            .title { font-size: 18px; font-weight: 700; margin-top: 10px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; }
+            .row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; }
+            .label { font-weight: 600; color: #64748b; }
+            .value { font-weight: 800; text-align: right; }
+            .total-row { display: flex; justify-content: space-between; padding: 20px 0; border-bottom: 2px solid #0f172a; margin-top: 10px; }
+            .total-label { font-size: 18px; font-weight: 900; }
+            .total-value { font-size: 20px; font-weight: 900; color: #16a34a; }
+            .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #94a3b8; }
+            @media print {
+              body { padding: 0; }
+              .receipt { border: none; padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            <div class="header">
+              <div class="school-name">ÉCOLE 2026</div>
+              <div class="title">Reçu de Paiement N° ${payment.idPaie}</div>
+            </div>
+            
+            <div class="row">
+              <span class="label">Date de paiement :</span>
+              <span class="value">${payment.datePaie ? new Date(payment.datePaie).toLocaleDateString('fr-FR') : '—'}</span>
+            </div>
+            <div class="row">
+              <span class="label">Élève :</span>
+              <span class="value">${payment.elevePrenom || payment.prenom || ''} ${payment.eleveNom || payment.nom || ''}</span>
+            </div>
+            <div class="row">
+              <span class="label">Matricule :</span>
+              <span class="value">${payment.eleveMatricule || payment.matricule || '—'}</span>
+            </div>
+            <div class="row">
+              <span class="label">Classe / Salle :</span>
+              <span class="value">${payment.eleveClasse || '—'} / ${payment.eleveSalle || '—'}</span>
+            </div>
+            <div class="row">
+              <span class="label">Payeur :</span>
+              <span class="value">${payment.payeurPrenom || ''} ${payment.payeurNom || 'Inconnu'} (${payment.payeurType || '—'})</span>
+            </div>
+            <div class="row">
+              <span class="label">Mode de paiement :</span>
+              <span class="value">${payment.mode || '—'}</span>
+            </div>
+            <div class="row">
+              <span class="label">Commentaire :</span>
+              <span class="value">${payment.commentaire || '—'}</span>
+            </div>
+
+            <div class="total-row">
+              <span class="total-label">Montant Réglé :</span>
+              <span class="total-value">${Number(payment.montant || 0).toLocaleString('fr-FR')} FCFA</span>
+            </div>
+
+            <div class="footer">
+              Ce reçu sert de preuve de paiement. Merci de votre confiance.<br>
+              Généré le ${new Date().toLocaleString('fr-FR')}
+            </div>
+          </div>
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   useEffect(() => { loadAll(); }, []);
 
@@ -132,9 +214,11 @@ export default function Paiements({ noLayout = false }) {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={loadAll} style={{ padding: '9px 14px', borderRadius: 8, background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}><RefreshCw size={14} /></button>
-          <button onClick={() => { setFormData({ matricule: '', montant: '', idMode: '', commentaire: '', datePaie: new Date().toISOString().split('T')[0] }); setError(''); setShowForm(true); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', borderRadius: 9, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 4px 12px rgba(22,163,74,0.25)' }}>
-            <Plus size={16} /> Enregistrer un paiement
-          </button>
+          {!isParent && (
+            <button onClick={() => { setFormData({ matricule: '', montant: '', idMode: '', commentaire: '', datePaie: new Date().toISOString().split('T')[0] }); setError(''); setShowForm(true); }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', borderRadius: 9, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, boxShadow: '0 4px 12px rgba(22,163,74,0.25)' }}>
+              <Plus size={16} /> Enregistrer un paiement
+            </button>
+          )}
         </div>
       </div>
 
@@ -238,14 +322,14 @@ export default function Paiements({ noLayout = false }) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f0fdf4', borderBottom: '1px solid #e2e8f0' }}>
-                  {['ID', 'Élève', 'Montant', 'Date', 'Mode', 'Commentaire'].map(h => (
+                  {['ID', 'Élève', 'Montant', 'Date', 'Mode', 'Payé par', 'Commentaire'].map(h => (
                     <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
                     <CreditCard size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
                     <div>Aucun paiement trouvé</div>
                   </td></tr>
@@ -264,6 +348,10 @@ export default function Paiements({ noLayout = false }) {
                       {p.datePaie ? new Date(p.datePaie).toLocaleDateString('fr-FR') : '—'}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>{p.mode || '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>
+                      {p.payeurPrenom || p.payeurNom ? `${p.payeurPrenom || ''} ${p.payeurNom || ''}`.trim() : '—'}
+                      {p.payeurType ? <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 4 }}>({p.payeurType})</span> : ''}
+                    </td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#64748b' }}>{p.commentaire || '—'}</td>
                   </tr>
                 ))}
@@ -320,8 +408,8 @@ export default function Paiements({ noLayout = false }) {
                 <div style={{ fontSize: 13, color: '#0f172a', marginTop: 6 }}>{selected.commentaire || '—'}</div>
               </div>
               <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-                <button style={{ padding: '10px 14px', borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', display: 'inline-flex', gap: 8, alignItems: 'center' }}><FileText size={14} /> Reçu PDF</button>
-                <button style={{ padding: '10px 14px', borderRadius: 12, border: 'none', background: '#0062ff', color: '#fff', cursor: 'pointer', display: 'inline-flex', gap: 8, alignItems: 'center' }}><BadgeDollarSign size={14} /> Valider</button>
+                <button onClick={() => handlePrintReceipt(selected)} style={{ padding: '10px 14px', borderRadius: 12, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', display: 'inline-flex', gap: 8, alignItems: 'center' }}><FileText size={14} /> Reçu PDF</button>
+                <button onClick={() => setSelected(null)} style={{ padding: '10px 14px', borderRadius: 12, border: 'none', background: '#0062ff', color: '#fff', cursor: 'pointer', display: 'inline-flex', gap: 8, alignItems: 'center' }}><BadgeDollarSign size={14} /> Fermer</button>
               </div>
             </div>
           </div>

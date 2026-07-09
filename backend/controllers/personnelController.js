@@ -14,6 +14,13 @@ exports.listPersonnel = async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
+exports.getPersonnes = async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT idPers, nom, prenom, typePersonne FROM Personne ORDER BY nom ASC, prenom ASC');
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
 exports.getPersonnel = async (req, res) => {
   try {
     const { id } = req.params;

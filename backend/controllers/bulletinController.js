@@ -17,6 +17,14 @@ function obtenirAppreciation(note) {
   return 'Faible';
 }
 
+function getGrade(note) {
+  if (note >= 16) return 'A+';
+  if (note >= 14) return 'A';
+  if (note >= 12) return 'B';
+  if (note >= 10) return 'C';
+  return 'F';
+}
+
 // Créer un nouveau bulletin
 exports.createBulletin = async (req, res) => {
   try {
@@ -239,16 +247,43 @@ exports.generateClassBulletins = async (req, res) => {
       return res.status(400).json({ error: 'idAnnee, idTrimes et idClasse ou idSalle requis' });
     }
 
-    // Trouver les matricules des élèves dans la classe/salle
-    const params = [idAnnee];
+    const [[anneeRow]] = await pool.query(`SELECT libelle FROM AnneeAcademique WHERE idAnnee = ?`, [idAnnee]);
+    const [[trimestreRow]] = await pool.query(`SELECT libelle FROM Trimestre WHERE idTrimes = ?`, [idTrimes]);
+
+    let selectionLabel = 'Classe';
+    let selectionValue = '';
+    let params = [idAnnee];
     let whereJoin = '';
+
     if (idSalle) {
+      selectionLabel = 'Salle';
+      const [[salleRow]] = await pool.query(
+        `SELECT s.libelle AS salle, cl.libelle AS classe
+         FROM Salle s
+         LEFT JOIN Classe cl ON cl.idClasse = s.idClasse
+         WHERE s.idSalle = ?`,
+        [idSalle]
+      );
+      selectionValue = salleRow ? `${salleRow.salle} (${salleRow.classe || 'Classe inconnue'})` : `${idSalle}`;
       whereJoin = 'WHERE f.idSalle = ? AND f.idAcademi = ?';
-      params.unshift(idSalle); // [idSalle, idAnnee]
+      params = [idSalle, idAnnee];
     } else {
+      const [[classeRow]] = await pool.query(`SELECT libelle FROM Classe WHERE idClasse = ?`, [idClasse]);
+      selectionValue = classeRow ? classeRow.libelle : `${idClasse}`;
       whereJoin = 'WHERE s.idClasse = ? AND f.idAcademi = ?';
-      params.unshift(idClasse);
+      params = [idClasse, idAnnee];
     }
+
+    const [effectifRows] = await pool.query(
+      `SELECT COUNT(DISTINCT e.matricule) AS total
+       FROM Eleve e
+       LEFT JOIN Frequente f ON f.matricule = e.matricule
+       LEFT JOIN Salle s ON s.idSalle = f.idSalle
+       ${whereJoin}`,
+      params
+    );
+
+    const effectif = effectifRows[0]?.total || 0;
 
     const [eleves] = await pool.query(
       `SELECT DISTINCT e.matricule, e.nom, e.prenom
@@ -256,35 +291,47 @@ exports.generateClassBulletins = async (req, res) => {
        LEFT JOIN Frequente f ON f.matricule = e.matricule
        LEFT JOIN Salle s ON s.idSalle = f.idSalle
        ${whereJoin}
-       ORDER BY e.nom, e.prenom`, params
+       ORDER BY e.nom, e.prenom`,
+      params
     );
 
-    if (!eleves || eleves.length === 0) return res.status(404).json({ error: 'Aucun élève trouvé pour la sélection' });
+    if (!eleves || eleves.length === 0) {
+      return res.status(404).json({ error: 'Aucun élève trouvé pour la sélection' });
+    }
 
-    // Pour chaque élève, récupérer évaluations pour le trimestre et construire un simple bulletin HTML
-    let html = `<!doctype html><html><head><meta charset="utf-8"><title>Bulletins</title><style>body{font-family:Arial,Helvetica,sans-serif} .bulletin{page-break-after:always;border:1px solid #ccc;padding:16px;margin:12px}</style></head><body>`;
+    let html = `<!doctype html><html><head><meta charset="utf-8"><title>Bulletins ${selectionValue}</title><style>body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;color:#222}h1,h2,h3,p{margin:0}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #ccc;padding:8px;text-align:left}thead{background:#f3f4f6} .bulletin{page-break-after:always;padding:24px} .summary{margin-bottom:24px} .header{margin-bottom:24px}</style></head><body>`;
+
+    html += `<div class="header"><h1>Bulletins de ${selectionLabel}</h1><p>${selectionValue}</p><p>Année scolaire: ${anneeRow?.libelle || idAnnee} — Trimestre: ${trimestreRow?.libelle || idTrimes}</p><p>Effectif: <strong>${effectif}</strong> élèves</p></div>`;
 
     for (const el of eleves) {
       const [evaluations] = await pool.query(
-        `SELECT ev.note, ev.appreciation, c.libelle AS cours
+        `SELECT ev.note, ev.appreciation, c.libelle AS cours, c.coefficient
          FROM Evaluation ev
          LEFT JOIN Cours c ON c.idCours = ev.idCours
          LEFT JOIN Session s ON s.idSession = ev.idSession
          LEFT JOIN Trimestre t ON t.idTrimes = s.idTrimestre
-         WHERE ev.matricule = ? AND t.idTrimes = ?`,
+         WHERE ev.matricule = ? AND t.idTrimes = ?
+         ORDER BY c.libelle`,
         [el.matricule, idTrimes]
       );
 
       const notes = evaluations.map(e => Number(e.note) || 0).filter(n => n > 0);
-      const moyenne = notes.length ? (notes.reduce((a,b)=>a+b,0)/notes.length).toFixed(2) : '0.00';
+      const moyenne = notes.length ? (notes.reduce((a, b) => a + b, 0) / notes.length).toFixed(2) : '0.00';
 
-      html += `<div class="bulletin"><h2>Bulletin - ${el.prenom} ${el.nom} (${el.matricule})</h2>`;
-      html += `<p>Année: ${idAnnee} — Trimestre: ${idTrimes}</p>`;
-      html += `<table border="1" cellspacing="0" cellpadding="6"><thead><tr><th>Cours</th><th>Note</th><th>Appréciation</th></tr></thead><tbody>`;
-      evaluations.forEach(ev => {
-        html += `<tr><td>${ev.cours || ''}</td><td>${ev.note ?? ''}</td><td>${ev.appreciation || ''}</td></tr>`;
-      });
-      html += `</tbody></table><p>Moyenne: <strong>${moyenne}</strong></p></div>`;
+      html += `<div class="bulletin"><div class="summary"><h2>${el.prenom} ${el.nom} (${el.matricule})</h2><p>Effectif courant: ${effectif} élèves</p><p>Moyenne générale: <strong>${moyenne}</strong></p></div>`;
+      html += `<table><thead><tr><th>Cours</th><th>Coefficient</th><th>Note</th><th>Grade</th><th>Appréciation</th></tr></thead><tbody>`;
+
+      if (evaluations.length === 0) {
+        html += `<tr><td colspan="5" style="text-align:center">Aucune évaluation pour ce trimestre</td></tr>`;
+      } else {
+        evaluations.forEach((ev) => {
+          const note = ev.note !== null && ev.note !== undefined ? Number(ev.note) : '';
+          const grade = note === '' ? '' : getGrade(note);
+          html += `<tr><td>${ev.cours || ''}</td><td>${ev.coefficient ?? 1}</td><td>${note !== '' ? note.toFixed(2) : ''}</td><td>${grade}</td><td>${ev.appreciation || ''}</td></tr>`;
+        });
+      }
+
+      html += `</tbody></table></div>`;
     }
 
     html += `</body></html>`;

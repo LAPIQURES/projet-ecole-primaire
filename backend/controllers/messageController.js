@@ -240,20 +240,23 @@ exports.getContacts = async (req, res) => {
       pool.query(
         `SELECT
           username AS identifier,
-          nom AS label,
+          CASE WHEN COALESCE(nom, '') = '' THEN username ELSE nom END AS label,
           'admin' AS role,
-          CONCAT(nom, ' · Admin') AS displayLabel
+          CONCAT(
+            CASE WHEN COALESCE(nom, '') = '' THEN username ELSE nom END,
+            ' · Admin'
+          ) AS displayLabel
          FROM Admin
-         WHERE actif = 1 AND username <> ?
+         WHERE actif = 1 AND username IS NOT NULL AND username <> '' AND username <> ?
          ORDER BY nom`,
         [currentIdentifier]
       ),
       pool.query(
         `SELECT
           p.username AS identifier,
-          CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, '')) AS label,
+          TRIM(CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''))) AS label,
           'enseignant' AS role,
-          CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''), ' · Enseignant') AS displayLabel
+          CONCAT(TRIM(CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''))), ' · Enseignant') AS displayLabel
          FROM Enseignant en
          JOIN Personne p ON p.idPers = en.idPers
          WHERE en.Actif = 1 AND COALESCE(p.username, '') <> '' AND p.username <> ?
@@ -263,9 +266,9 @@ exports.getContacts = async (req, res) => {
       pool.query(
         `SELECT
           ${parentIdentifierExpr},
-          CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, '')) AS label,
+          TRIM(CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''))) AS label,
           'parent' AS role,
-          CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''), ' · Parent') AS displayLabel,
+          CONCAT(TRIM(CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''))), ' · Parent') AS displayLabel,
           e.matricule AS eleveMatricule
          FROM Parents pr
          JOIN Personne p ON p.idPers = pr.idPers

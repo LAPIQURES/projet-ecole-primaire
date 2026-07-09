@@ -4,6 +4,7 @@ const ctrl = require('../controllers/personnelController');
 const { verifyAdmin } = require('../middleware/auth');
 
 router.get('/', verifyAdmin, ctrl.listPersonnel);
+router.get('/personnes/list', verifyAdmin, ctrl.getPersonnes);
 router.get('/:id', verifyAdmin, ctrl.getPersonnel);
 router.post('/', verifyAdmin, ctrl.createPersonnel);
 router.put('/:id', verifyAdmin, ctrl.updatePersonnel);

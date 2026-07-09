@@ -29,7 +29,7 @@ exports.getParentById = async (req, res) => {
         CASE WHEN COALESCE(pr.isDelete, 0) = 1 OR COALESCE(p.isDelete, 0) = 1 THEN 0 ELSE 1 END AS actif
       FROM Parents pr
       JOIN Personne p ON p.idPers = pr.idPers
-      WHERE pr.idParent = ?`, [req.params.id]);
+      WHERE pr.idParent = ? OR pr.idPers = ?`, [req.params.id, req.params.id]);
     
     if (!rows.length) return res.status(404).json({ error: 'Parent non trouvé' });
     const parent = rows[0];

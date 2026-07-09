@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen, Calendar, CreditCard, MessageSquare, FileText,
   ChevronRight, CheckCircle, AlertCircle, Clock, User,
-  TrendingUp, Shield, Star, Bell,
+  TrendingUp, Shield, Star, Bell, DoorOpen,
 } from 'lucide-react';
 import ParentLayout from '../components/ParentLayout';
 import API, {
@@ -15,6 +15,8 @@ import API, {
 import Messages from './Messages';
 import Paiements from './Paiements';
 
+const DAY_LABELS = { 1: 'Lundi', 2: 'Mardi', 3: 'Mercredi', 4: 'Jeudi', 5: 'Vendredi', 6: 'Samedi', 7: 'Dimanche' };
+
 const getClassesAPI = async () => {
   try { const api = await import('../services/api'); return await api.getClassesAPI(); }
   catch (e) { return { data: [] }; }
@@ -24,7 +26,14 @@ const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Number(n || 0));
 const fmtMoney = (n) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(Number(n || 0));
 
-const DAY_LABELS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+const DAYS = [
+  { value: 1, short: 'Lun', label: 'Lundi' },
+  { value: 2, short: 'Mar', label: 'Mardi' },
+  { value: 3, short: 'Mer', label: 'Mercredi' },
+  { value: 4, short: 'Jeu', label: 'Jeudi' },
+  { value: 5, short: 'Ven', label: 'Vendredi' },
+];
+const HOURS = Array.from({ length: 10 }, (_, i) => 8 + i);
 
 export default function DashboardParent() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -214,6 +223,29 @@ export default function DashboardParent() {
       const timeB = Number(String(b.startTime || '00:00').split(':')[0]) * 60 + Number(String(b.startTime || '00:00').split(':')[1] || 0);
       return dayA - dayB || timeA - timeB;
     });
+
+  const getScheduleForSlot = useCallback((day, hour) => {
+    const normalizeDay = (d) => {
+      if (d == null) return 0;
+      const n = Number(d);
+      if (!Number.isNaN(n)) return n;
+      const s = String(d).toLowerCase().slice(0, 3);
+      switch (s) {
+        case 'lun': return 1;
+        case 'mar': return 2;
+        case 'mer': return 3;
+        case 'jeu': return 4;
+        case 'ven': return 5;
+        default: return 0;
+      }
+    };
+
+    return activeClassSchedule.find((s) => {
+      const dayNum = normalizeDay(s.jour ?? s.dayOfWeek ?? s.day ?? s.day_of_week);
+      const schedHour = parseInt(String(s.heure || s.startTime || s.time || '').split(':')[0]);
+      return dayNum === day && schedHour === hour;
+    });
+  }, [activeClassSchedule]);
 
   const kpis = [
     { label: 'Moyenne générale', value: metrics.average, icon: Star, color: '#8b5cf6', bg: '#f5f3ff', sub: 'Ce trimestre' },
@@ -550,6 +582,15 @@ export default function DashboardParent() {
       {/* ─── Vue Emploi du Temps (Grille) ─── */}
       {view === 'emploi-du-temps' && (
         <div style={{ animation: 'fadeUp 0.35s ease both' }}>
+          <style>{`
+            .schedule-grid { display: grid; grid-template-columns: 80px repeat(5, 1fr); gap: 1px; background: #e2e8f0; padding: 1px; }
+            .schedule-cell { background: white; padding: 12px; text-align: center; font-size: 12px; }
+            .schedule-header { background: #0062ff; color: white; font-weight: 800; padding: 12px; }
+            .schedule-hour { background: #f1f5f9; font-weight: 700; color: #64748b; }
+            .schedule-empty { background: #fafbfc; }
+            .schedule-item { background: linear-gradient(135deg, #0062ff, #0047a3); color: white; padding: 8px; border-radius: 6px; font-weight: 700; font-size: 11px; line-height: 1.3; }
+            @media (max-width: 1024px) { .schedule-grid { grid-template-columns: 70px repeat(2, 1fr); } }
+          `}</style>
           <div style={{ background: 'white', borderRadius: 20, padding: '24px', boxShadow: '0 4px 24px rgba(124,58,237,0.08)', border: '1px solid #ede9fe' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div>
@@ -562,64 +603,36 @@ export default function DashboardParent() {
               </div>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <div style={{ minWidth: 800, display: 'grid', gridTemplateColumns: '80px repeat(5, 1fr)', gap: '1px', background: '#e2e8f0', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden' }}>
-                {/* En-tête des jours */}
-                <div style={{ background: '#f8fafc', padding: 12 }}></div>
-                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'].map((jour) => (
-                  <div key={jour} style={{ background: '#f8fafc', padding: '14px 8px', textAlign: 'center', fontSize: 14, fontWeight: 800, color: '#1e1b4b' }}>
-                    {jour}
+            <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              <div className="schedule-grid" style={{ minWidth: 800 }}>
+                <div className="schedule-cell schedule-header">Heure</div>
+                {DAYS.map((day) => (
+                  <div key={day.value} className="schedule-cell schedule-header">
+                    {day.short}
                   </div>
                 ))}
 
-                {/* Grille horaire 8h - 17h */}
-                {Array.from({ length: 9 }).map((_, i) => {
-                  const hour = i + 8;
-                  const timeLabel = `${hour}h00`;
-                  return (
-                    <React.Fragment key={hour}>
-                      {/* Colonne heure */}
-                      <div style={{ background: '#fcfcfc', padding: '16px 8px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {timeLabel}
-                      </div>
-                      
-                      {/* Cellules des jours */}
-                      {[1, 2, 3, 4, 5].map((dayIdx) => {
-                        const dayNameStr = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'][dayIdx - 1];
-                        // Trouver le cours exact pour ce jour et cette heure
-                        const cours = activeClassSchedule.find(item => {
-                          const itemDay = String(item.dayOfWeek ?? item.jour ?? item.day ?? '').toLowerCase();
-                          const isSameDay = itemDay === dayNameStr.toLowerCase() || String(itemDay) === String(dayIdx);
-                          const itemHour = parseInt(String(item.startTime || item.heure || '').split(':')[0], 10);
-                          return isSameDay && itemHour === hour;
-                        });
-
-                        return (
-                          <div key={`${dayIdx}-${hour}`} style={{ background: 'white', padding: '10px', position: 'relative', minHeight: 70 }}>
-                            {cours && (
-                              <div style={{ 
-                                position: 'absolute', top: 4, left: 4, right: 4, bottom: 4, 
-                                background: 'linear-gradient(135deg, rgba(124,58,237,0.1), rgba(124,58,237,0.05))',
-                                borderLeft: '3px solid #7c3aed', borderRadius: 8, padding: '8px',
-                                display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                                backdropFilter: 'blur(4px)'
-                              }}>
-                                <div style={{ fontSize: 12, fontWeight: 800, color: '#4c1d95', lineHeight: 1.2 }}>
-                                  {cours.subject || cours.matiere || cours.libelleCours || 'Cours'}
-                                </div>
-                                {(cours.salle || cours.libelleSalle) && (
-                                  <div style={{ fontSize: 10, color: '#7c3aed', marginTop: 4, fontWeight: 600 }}>
-                                    Salle : {cours.salle || cours.libelleSalle}
-                                  </div>
-                                )}
+                {HOURS.map((hour) => (
+                  <React.Fragment key={`hour-${hour}`}>
+                    <div className="schedule-cell schedule-hour">{String(hour).padStart(2, '0')}:00</div>
+                    {DAYS.map((day) => {
+                      const item = getScheduleForSlot(day.value, hour);
+                      return (
+                        <div key={`${day.value}-${hour}`} className={`schedule-cell ${item ? '' : 'schedule-empty'}`}>
+                          {item && (
+                            <div className="schedule-item" title={item.libelleCours || item.subject || item.libelle || 'Cours'}>
+                              <div style={{ fontWeight: 900, marginBottom: 4 }}>{item.libelleCours || item.subject || item.libelle || 'Cours'}</div>
+                              <div style={{ fontSize: 10, opacity: 0.9, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                                <DoorOpen size={10} />
+                                {item.libelleSalle || item.salle || 'Salle'}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </React.Fragment>
-                  );
-                })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
             

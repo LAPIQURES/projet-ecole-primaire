@@ -218,8 +218,13 @@ export const addSalleToClasseAPI = (idClasse, data) => API.post(`/classes/${idCl
 
 // Rapports
 export const getRapportsElevesAPI = () => API.get('/rapports/eleves');
+export const createRapportEleveAPI = (data) => API.post('/rapports/eleves', data);
 export const deleteRapportEleveAPI = (id) => API.delete(`/rapports/eleves/${id}`);
 export const getRapportsEnseignantsAPI = () => API.get('/rapports/enseignants');
 export const deleteRapportEnseignantAPI = (id) => API.delete(`/rapports/enseignants/${id}`);
+
+// Postes et Fonctions
+export const getPostesAPI = () => API.get('/postes');
+export const getFonctionsAPI = () => API.get('/fonctions');
 
 export default API;

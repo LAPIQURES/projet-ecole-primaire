@@ -52,11 +52,14 @@ router.get('/', verifyToken, async (req, res) => {
       if (matList.length === 0) return res.json([]);
       const [rows] = await pool.query(`
         SELECT p.*, e.nom, e.prenom, m.libelle AS mode,
-          per.nom AS payeurNom, per.prenom AS payeurPrenom, per.typePersonne AS payeurType
+          COALESCE(per.nom, adm.nom) AS payeurNom,
+          COALESCE(per.prenom, adm.username) AS payeurPrenom,
+          CASE WHEN per.idPers IS NOT NULL THEN per.typePersonne ELSE CONCAT('Admin (', CASE adm.typeAdmin WHEN 1 THEN 'SuperAdmin' WHEN 2 THEN 'Admin' WHEN 5 THEN 'Directeur' WHEN 6 THEN 'Intendant' ELSE 'Staff' END, ')') END AS payeurType
         FROM Paiement p
         LEFT JOIN Eleve e ON e.matricule = p.matricule
         LEFT JOIN Mode m ON m.idMode = p.idMode
         LEFT JOIN Personne per ON per.idPers = p.idPers
+        LEFT JOIN Admin adm ON adm.ID = p.idPers AND per.idPers IS NULL
         WHERE p.matricule IN (?)
         ORDER BY p.dateEnregistrer DESC
         LIMIT 300
@@ -66,11 +69,14 @@ router.get('/', verifyToken, async (req, res) => {
 
     const [rows] = await pool.query(`
       SELECT p.*, e.nom, e.prenom, m.libelle AS mode,
-        per.nom AS payeurNom, per.prenom AS payeurPrenom, per.typePersonne AS payeurType
+        COALESCE(per.nom, adm.nom) AS payeurNom,
+        COALESCE(per.prenom, adm.username) AS payeurPrenom,
+        CASE WHEN per.idPers IS NOT NULL THEN per.typePersonne ELSE CONCAT('Admin (', CASE adm.typeAdmin WHEN 1 THEN 'SuperAdmin' WHEN 2 THEN 'Admin' WHEN 5 THEN 'Directeur' WHEN 6 THEN 'Intendant' ELSE 'Staff' END, ')') END AS payeurType
       FROM Paiement p
       LEFT JOIN Eleve e ON e.matricule = p.matricule
       LEFT JOIN Mode m ON m.idMode = p.idMode
       LEFT JOIN Personne per ON per.idPers = p.idPers
+      LEFT JOIN Admin adm ON adm.ID = p.idPers AND per.idPers IS NULL
       ORDER BY p.dateEnregistrer DESC
       LIMIT 300
     `);
@@ -115,7 +121,9 @@ router.get('/:id', verifyToken, async (req, res) => {
     const [rows] = await pool.query(`
       SELECT p.*, e.nom AS eleveNom, e.prenom AS elevePrenom, e.matricule AS eleveMatricule,
         s.libelle AS eleveSalle, c.libelle AS eleveClasse, m.libelle AS mode,
-        per.nom AS payeurNom, per.prenom AS payeurPrenom, per.typePersonne AS payeurType
+        COALESCE(per.nom, adm.nom) AS payeurNom,
+        COALESCE(per.prenom, adm.username) AS payeurPrenom,
+        CASE WHEN per.idPers IS NOT NULL THEN per.typePersonne ELSE CONCAT('Admin (', CASE adm.typeAdmin WHEN 1 THEN 'SuperAdmin' WHEN 2 THEN 'Admin' WHEN 5 THEN 'Directeur' WHEN 6 THEN 'Intendant' ELSE 'Staff' END, ')') END AS payeurType
       FROM Paiement p
       LEFT JOIN Eleve e ON e.matricule = p.matricule
       LEFT JOIN Frequente f ON f.matricule = e.matricule
@@ -123,6 +131,7 @@ router.get('/:id', verifyToken, async (req, res) => {
       LEFT JOIN Classe c ON c.idClasse = s.idClasse
       LEFT JOIN Mode m ON m.idMode = p.idMode
       LEFT JOIN Personne per ON per.idPers = p.idPers
+      LEFT JOIN Admin adm ON adm.ID = p.idPers AND per.idPers IS NULL
       WHERE p.idPaie = ?
       LIMIT 1
     `, [req.params.id]);
