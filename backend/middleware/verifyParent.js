@@ -6,9 +6,7 @@ module.exports = async function verifyParentAccess(req, res, next) {
   try {
     const user = req.user || {};
     if (!user || !user.role) return res.status(401).json({ error: 'Non authentifié' });
-    if (user.role === 'admin' || user.role === 'superadmin') return next();
-
-    if (user.role !== 'parent') return res.status(403).json({ error: 'Accès réservé aux parents' });
+    if (['admin', 'superadmin', 'intendant', 'directeur'].includes(user.role)) return next();
 
     const matricule = req.body?.matricule || req.query?.matricule || req.params?.matricule || null;
     if (!matricule) return res.status(400).json({ error: 'Matricule requis pour vérification' });

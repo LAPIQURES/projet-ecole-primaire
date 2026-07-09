@@ -3,18 +3,18 @@ import Layout from '../components/Layout';
 import {
   Users, UserCheck, Building2, CreditCard, AlertTriangle,
   TrendingUp, BookOpen, Award, Activity, RefreshCw, Calendar,
-  ChevronRight, BarChart2,
+  ChevronRight, BarChart2, User, Lock
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import API from '../services/api';
+import API, { getProfileAPI, updateProfileAPI, changePasswordAPI } from '../services/api';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Number(n || 0));
-const fmtMoney = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'HTG', maximumFractionDigits: 0 }).format(Number(n || 0));
+const fmtMoney = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(Number(n || 0));
 
 function KpiCard({ label, value, icon: Icon, color, sub, trend }) {
   return (
@@ -83,6 +83,11 @@ export default function DashboardDirecteur() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [profileForm, setProfileForm] = useState({ nom: '', prenom: '', email: '', mobile: '', username: '' });
+  const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
 
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -91,14 +96,16 @@ export default function DashboardDirecteur() {
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-      const [statsRes, inscRes] = await Promise.all([
+      const [statsRes, inscRes, profileRes] = await Promise.all([
         API.get('/stats/directeur', { headers }),
         API.get('/stats/inscriptions-mensuel', { headers }),
+        getProfileAPI().catch(() => ({ data: {} })),
       ]);
       setStats(statsRes.data.stats || null);
       setElevesRecents(statsRes.data.elevesRecents || []);
       setRepartitionClasses(statsRes.data.repartitionClasses || []);
       setInscriptionsMensuel(inscRes.data || []);
+      if (profileRes.data) setProfileForm(profileRes.data);
     } catch (err) {
       setError('Impossible de charger les statistiques. Vérifiez votre connexion.');
       console.error('DashboardDirecteur error:', err?.response?.data || err);
@@ -113,6 +120,41 @@ export default function DashboardDirecteur() {
   const tauxRemplissage = stats?.capaciteMax > 0
     ? Math.round((stats.totalEleves / stats.capaciteMax) * 100)
     : 0;
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingProfile(true);
+      await updateProfileAPI(profileForm);
+      setProfileMsg({ type: 'success', text: 'Profil mis à jour avec succès !' });
+      setTimeout(() => setProfileMsg({ type: '', text: '' }), 3000);
+    } catch (err) {
+      setProfileMsg({ type: 'error', text: err.response?.data?.error || err.message });
+    } finally { setSavingProfile(false); }
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (pwdForm.newPassword !== pwdForm.confirmPassword) {
+      setProfileMsg({ type: 'error', text: 'Les mots de passe ne correspondent pas' });
+      return;
+    }
+    try {
+      setSavingProfile(true);
+      await changePasswordAPI({ oldPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword });
+      setProfileMsg({ type: 'success', text: 'Mot de passe mis à jour !' });
+      setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setProfileMsg({ type: '', text: '' }), 3000);
+    } catch (err) {
+      setProfileMsg({ type: 'error', text: err.response?.data?.error || err.message });
+    } finally { setSavingProfile(false); }
+  };
+
+  const inpStyle = {
+    padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: 10,
+    fontSize: 14, outline: 'none', width: '100%', boxSizing: 'border-box',
+    fontFamily: 'inherit', color: '#1e293b', background: '#fff',
+  };
 
   return (
     <Layout title="Tableau de bord — Directeur">
@@ -148,14 +190,41 @@ export default function DashboardDirecteur() {
         </button>
       </div>
 
-      {/* ─── Error ─── */}
       {error && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '14px 18px', color: '#dc2626', marginBottom: 24, fontSize: 14 }}>
           ⚠️ {error}
         </div>
       )}
 
-      {/* ─── Bannière Hero ─── */}
+      {/* ─── Tabs ─── */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        <button
+          onClick={() => setActiveTab('overview')}
+          style={{
+            padding: '10px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none',
+            background: activeTab === 'overview' ? '#6366f1' : '#f1f5f9',
+            color: activeTab === 'overview' ? 'white' : '#64748b',
+            display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+          }}
+        >
+          <Activity size={16} /> Vue d'ensemble
+        </button>
+        <button
+          onClick={() => setActiveTab('profil')}
+          style={{
+            padding: '10px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: 'none',
+            background: activeTab === 'profil' ? '#6366f1' : '#f1f5f9',
+            color: activeTab === 'profil' ? 'white' : '#64748b',
+            display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s',
+          }}
+        >
+          <User size={16} /> Mon Profil
+        </button>
+      </div>
+
+      {activeTab === 'overview' ? (
+        <>
+          {/* ─── Bannière Hero ─── */}
       <div style={{
         background: 'linear-gradient(135deg, #1e40af 0%, #6366f1 60%, #8b5cf6 100%)',
         borderRadius: 24, padding: '28px 32px', marginBottom: 28,
@@ -314,6 +383,92 @@ export default function DashboardDirecteur() {
             </div>
           </div>
         </>
+      )}
+      </>
+      ) : (
+        /* ─── Profil ─── */
+        <div style={{ animation: 'fadeUp 0.4s ease both' }}>
+          {profileMsg.text && (
+            <div style={{
+              marginBottom: 20, padding: '14px 18px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+              background: profileMsg.type === 'success' ? '#dcfce7' : '#fef2f2',
+              color: profileMsg.type === 'success' ? '#15803d' : '#dc2626',
+              border: `1px solid ${profileMsg.type === 'success' ? '#86efac' : '#fca5a5'}`
+            }}>
+              {profileMsg.type === 'success' ? '✅' : '❌'} {profileMsg.text}
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 24 }}>
+            <form onSubmit={handleUpdateProfile} style={{ background: 'white', borderRadius: 20, padding: 32, boxShadow: '0 4px 24px rgba(15,23,42,0.07)', border: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: '#6366f118', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <User size={24} color="#6366f1" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1e293b' }}>Informations Personnelles</h3>
+                  <div style={{ fontSize: 13, color: '#64748b' }}>Mettez à jour vos coordonnées</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 16 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Nom</label>
+                  <input type="text" value={profileForm.nom || ''} onChange={e => setProfileForm({ ...profileForm, nom: e.target.value })} style={inpStyle} required />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Prénom</label>
+                  <input type="text" value={profileForm.prenom || ''} onChange={e => setProfileForm({ ...profileForm, prenom: e.target.value })} style={inpStyle} required />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Email</label>
+                  <input type="email" value={profileForm.email || ''} onChange={e => setProfileForm({ ...profileForm, email: e.target.value })} style={inpStyle} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Mobile</label>
+                  <input type="text" value={profileForm.mobile || ''} onChange={e => setProfileForm({ ...profileForm, mobile: e.target.value })} style={inpStyle} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Nom d'utilisateur</label>
+                  <input type="text" value={profileForm.username || ''} onChange={e => setProfileForm({ ...profileForm, username: e.target.value })} style={inpStyle} required />
+                </div>
+              </div>
+              <button type="submit" disabled={savingProfile} style={{ marginTop: 24, width: '100%', padding: '12px 20px', background: savingProfile ? '#a5b4fc' : '#6366f1', color: 'white', border: 'none', borderRadius: 12, cursor: savingProfile ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, transition: 'all 0.2s' }}>
+                {savingProfile ? 'Enregistrement...' : 'Enregistrer les modifications'}
+              </button>
+            </form>
+
+            <form onSubmit={handleUpdatePassword} style={{ background: 'white', borderRadius: 20, padding: 32, boxShadow: '0 4px 24px rgba(15,23,42,0.07)', border: '1px solid #f1f5f9', height: 'fit-content' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: '#f59e0b18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Lock size={24} color="#f59e0b" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1e293b' }}>Sécurité</h3>
+                  <div style={{ fontSize: 13, color: '#64748b' }}>Changer votre mot de passe</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 16 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Mot de passe actuel</label>
+                  <input type="password" value={pwdForm.currentPassword} onChange={e => setPwdForm({ ...pwdForm, currentPassword: e.target.value })} style={inpStyle} required />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Nouveau mot de passe</label>
+                  <input type="password" value={pwdForm.newPassword} onChange={e => setPwdForm({ ...pwdForm, newPassword: e.target.value })} style={inpStyle} required minLength={6} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 6 }}>Confirmer le nouveau mot de passe</label>
+                  <input type="password" value={pwdForm.confirmPassword} onChange={e => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })} style={inpStyle} required minLength={6} />
+                </div>
+              </div>
+              <button type="submit" disabled={savingProfile} style={{ marginTop: 24, width: '100%', padding: '12px 20px', background: savingProfile ? '#fcd34d' : '#f59e0b', color: 'white', border: 'none', borderRadius: 12, cursor: savingProfile ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, transition: 'all 0.2s' }}>
+                {savingProfile ? 'Modification...' : 'Mettre à jour le mot de passe'}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </Layout>
   );

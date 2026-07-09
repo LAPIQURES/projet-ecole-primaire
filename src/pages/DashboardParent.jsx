@@ -22,7 +22,7 @@ const getClassesAPI = async () => {
 
 const fmt = (n) => new Intl.NumberFormat('fr-FR').format(Number(n || 0));
 const fmtMoney = (n) =>
-  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'HTG', maximumFractionDigits: 0 }).format(Number(n || 0));
+  new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 }).format(Number(n || 0));
 
 const DAY_LABELS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 

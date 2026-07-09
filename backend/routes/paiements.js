@@ -8,10 +8,15 @@ const verifyParent = require('../middleware/verifyParent');
 async function resolvePaiementAllocation(matricule, montant) {
   const total = Number(montant || 0);
   const [tranches] = await pool.query(`
-    SELECT idTranche, libelle, montant, delai, idScolarite
-    FROM Tranches
-    ORDER BY idTranche ASC
-  `);
+    SELECT t.idTranche, t.libelle, t.montant, t.delai_mois, t.delai_jour, t.idScolarite
+    FROM Tranches t
+    JOIN Scolarite sc ON sc.idScolarite = t.idScolarite
+    JOIN Classe c ON c.idClasse = sc.idClasse
+    JOIN Salle s ON s.idClasse = c.idClasse
+    JOIN Frequente f ON f.idSalle = s.idSalle
+    WHERE f.matricule = ?
+    ORDER BY t.idTranche ASC
+  `, [matricule]);
 
   let cumul = 0;
   for (const tranche of tranches) {
@@ -73,6 +78,38 @@ router.get('/', verifyToken, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET scolarite et tranches d'un élève
+router.get('/scolarite/:matricule', verifyToken, async (req, res) => {
+  try {
+    const matricule = req.params.matricule;
+    const [scolRows] = await pool.query(`
+      SELECT sc.*
+      FROM Scolarite sc
+      JOIN Classe c ON c.idClasse = sc.idClasse
+      JOIN Salle s ON s.idClasse = c.idClasse
+      JOIN Frequente f ON f.idSalle = s.idSalle
+      WHERE f.matricule = ?
+      LIMIT 1
+    `, [matricule]);
+    
+    if (!scolRows.length) return res.json({ pension: 0, tranches: [] });
+    
+    const [tranches] = await pool.query(`
+      SELECT * FROM Tranches WHERE idScolarite = ? ORDER BY idTranche ASC
+    `, [scolRows[0].idScolarite]);
+    
+    res.json({ pension: scolRows[0].pension, tranches });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET modes de paiement
+router.get('/modes', verifyToken, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT idMode, libelle FROM Mode WHERE actif = 1');
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.get('/:id', verifyToken, async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -92,14 +129,6 @@ router.get('/:id', verifyToken, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Paiement non trouvé' });
     const allocation = await resolvePaiementAllocation(rows[0].matricule, rows[0].montant);
     res.json({ ...rows[0], allocation });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-// GET modes de paiement
-router.get('/modes', verifyToken, async (req, res) => {
-  try {
-    const [rows] = await pool.query('SELECT idMode, libelle FROM Mode WHERE actif = 1');
-    res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

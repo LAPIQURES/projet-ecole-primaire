@@ -9,7 +9,7 @@ router.get('/directeur', verifyAdmin(['directeur','admin','superadmin']), statsC
 // Intendant endpoints (financial) - allow intendant/admin/superadmin
 router.get('/intendant', verifyAdmin(['intendant','admin','superadmin']), statsController.getIntendantDashboard);
 router.get('/paiements-mensuel', verifyAdmin(['intendant','admin','superadmin']), statsController.getPaiementsMensuel);
-router.get('/inscriptions-mensuel', verifyAdmin(['admin','superadmin']), statsController.getInscriptionsMensuel);
+router.get('/inscriptions-mensuel', verifyAdmin(['directeur','admin','superadmin']), statsController.getInscriptionsMensuel);
 
 // Generic dashboard (optional token)
 router.get('/dashboard', verifyToken, statsController.getDashboardStats);

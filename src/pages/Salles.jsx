@@ -181,25 +181,22 @@ export default function Salles() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, marginBottom: 18 }}>
-        <div className="card" style={{ padding: 18, transition: 'box-shadow 180ms ease' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 14, background: 'linear-gradient(135deg, #0062ff, #ffa000)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <Building2 size={20} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(260px, 320px)', gap: 14, marginBottom: 16, alignItems: 'start' }}>
+        <div className="card" style={{ padding: 16, transition: 'box-shadow 180ms ease', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 14, background: 'linear-gradient(135deg, #0062ff, #ffa000)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+              <Building2 size={18} />
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 950, color: '#0f172a' }}>Gestion des salles</div>
               <div style={{ fontSize: 12, color: '#64748b' }}>{salles.length} salle(s) au total</div>
             </div>
           </div>
-          <div style={{ fontSize: 13, color: '#475569' }}>
-            Thème unifié: bleu <span style={{ fontWeight: 900, color: BLUE }}>#0062ff</span> et orange <span style={{ fontWeight: 900, color: ORANGE }}>#ffa000</span>.
-          </div>
         </div>
 
-        <div className="card" style={{ padding: 18, transition: 'box-shadow 180ms ease' }}>
+        <div className="card" style={{ padding: 16, transition: 'box-shadow 180ms ease', minWidth: 0, maxHeight: 280, overflow: 'auto' }}>
           <div style={{ fontSize: 13, fontWeight: 950, color: '#0f172a', marginBottom: 8 }}>Champs affichés</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {['ID', 'Libellé', 'Capacité', 'Classe', 'Position', 'Surface', 'Statut', 'Créée le'].map((t) => (
               <span key={t} style={{ padding: '6px 10px', borderRadius: 999, background: '#f1f5f9', color: '#475569', fontSize: 12, border: '1px solid #e2e8f0' }}>
                 {t}

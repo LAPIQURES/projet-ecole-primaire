@@ -83,6 +83,8 @@ export default function Emploi() {
   const [cours, setCours] = useState([]);
 
   const [selectedClasse, setSelectedClasse] = useState('');
+  const [selectedSalle, setSelectedSalle] = useState('');
+  const [selectedMode, setSelectedMode] = useState('classe'); // 'classe' | 'salle'
   const [activeView, setActiveView] = useState('grille'); // 'grille' | 'affectations'
 
   const [loading, setLoading] = useState(true);
@@ -114,11 +116,33 @@ export default function Emploi() {
         getCoursAPI().catch(() => ({ data: [] })),
       ]);
 
-      setItems(Array.isArray(eRes.data) ? eRes.data : []);
+      const fetchedItems = Array.isArray(eRes.data) ? eRes.data : [];
+      setItems(fetchedItems);
       setSalles(Array.isArray(sRes.data) ? sRes.data : []);
       setProfs(Array.isArray(pRes.data) ? pRes.data : []);
       setClasses(Array.isArray(cRes.data) ? cRes.data : []);
       setCours(Array.isArray(coursRes.data) ? coursRes.data : []);
+
+      // DEBUG: log any slots mentioning "anglais" or using the common 'Anglais' course id
+      try {
+        const matches = fetchedItems.filter((it) => {
+          const subj = String(it.subject || '').toLowerCase();
+          if (subj.includes('anglais')) return true;
+          // fallback by idCours if available (seed uses idCours 31 for Anglais)
+          if (String(it.idCours || '') === '31') return true;
+          return false;
+        });
+        if (matches.length) {
+          // eslint-disable-next-line no-console
+          console.info('DEBUG: Emploi items matching "Anglais":', matches);
+        } else {
+          // eslint-disable-next-line no-console
+          console.info('DEBUG: No Emploi items found for "Anglais"');
+        }
+      } catch (dbgErr) {
+        // eslint-disable-next-line no-console
+        console.warn('DEBUG: error inspecting emploi items', dbgErr);
+      }
     } catch (e) {
       setError(e.response?.data?.error || e.message || 'Erreur de chargement');
     } finally {
@@ -150,15 +174,22 @@ export default function Emploi() {
     return m;
   }, [cours]);
 
-  const classItems = useMemo(() => {
-    if (!selectedClasse) return [];
-    return items.filter((it) => String(it.idClasse || '') === String(selectedClasse));
-  }, [items, selectedClasse]);
+  const selectedItems = useMemo(() => {
+    if (selectedMode === 'classe') {
+      if (!selectedClasse) return [];
+      return items.filter((it) => String(it.idClasse || '') === String(selectedClasse));
+    }
+    if (selectedMode === 'salle') {
+      if (!selectedSalle) return [];
+      return items.filter((it) => String(it.idSalle || '') === String(selectedSalle));
+    }
+    return [];
+  }, [items, selectedClasse, selectedSalle, selectedMode]);
 
   const cellMap = useMemo(() => {
     const m = new Map();
 
-    for (const it of classItems) {
+    for (const it of selectedItems) {
       const day = normalizeScheduleDay(it.dayOfWeek ?? it.jour ?? it.day);
       if (!day || day < 1 || day > 5) continue;
 
@@ -179,7 +210,7 @@ export default function Emploi() {
     }
 
     return m;
-  }, [classItems]);
+  }, [selectedItems]);
 
   const coursOptions = useMemo(() => {
     if (!form.idClasse) return cours;
@@ -247,7 +278,8 @@ export default function Emploi() {
     setSelectedItem(null);
     setForm({
       ...EMPTY_FORM,
-      idClasse: selectedClasse || '',
+      idClasse: selectedMode === 'classe' ? (selectedClasse || '') : '',
+      idSalle: selectedMode === 'salle' ? (selectedSalle || '') : '',
       dayOfWeek: String(dayOfWeek ?? 1),
       startTime: startTime ?? '08:00',
       duration: '1',
@@ -466,18 +498,19 @@ export default function Emploi() {
     const key = `${day}-${h}`;
     const info = cellMap.get(key);
 
+    const hasSelection = selectedMode === 'classe' ? Boolean(selectedClasse) : Boolean(selectedSalle);
     const baseStyle = {
       border: '1px solid #e2e8f0',
       height: 64,
       padding: 8,
       verticalAlign: 'top',
       background: '#fff',
-      cursor: selectedClasse ? 'pointer' : 'not-allowed',
+      cursor: hasSelection ? 'pointer' : 'not-allowed',
       position: 'relative',
       minWidth: 180,
     };
 
-    if (!selectedClasse) {
+    if (!hasSelection) {
       return (
         <td key={key} style={{ ...baseStyle, background: '#f8fafc', color: '#94a3b8', cursor: 'not-allowed' }}>
           <div style={{ fontSize: 12 }}>—</div>
@@ -506,6 +539,7 @@ export default function Emploi() {
 
     const tooltip = `${it.subject || 'Cours'}\n${prof ? `${prof.prenom} ${prof.nom}` : 'Enseignant: —'}\n${salle ? `Salle: ${salle.libelle}` : `Salle: ${it.idSalle || '—'}`}\n${normalizeTimeInput(it.startTime)} - ${normalizeTimeInput(it.endTime)}`;
 
+    const classe = it.idClasse ? classeById.get(String(it.idClasse)) : null;
     return (
       <td
         key={key}
@@ -518,6 +552,11 @@ export default function Emploi() {
             <div style={{ fontSize: 13, fontWeight: 950, color: '#0f172a', lineHeight: 1.1 }}>
               {it.subject || '—'}
             </div>
+            {selectedMode === 'salle' && (
+              <div style={{ fontSize: 12, color: '#475569', opacity: 0.95 }}>
+                {classe ? classe.libelle : it.idClasse || '—'}
+              </div>
+            )}
             <div style={{ fontSize: 12, color: '#0f172a', opacity: 0.85, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <span>{prof ? `${prof.prenom} ${prof.nom}` : it.idProf || '—'}</span>
               <span>·</span>
@@ -528,7 +567,11 @@ export default function Emploi() {
             </div>
           </div>
         ) : (
-          <div style={{ position: 'absolute', inset: 0, borderLeft: '4px solid rgba(15,23,42,0.25)' }} />
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: '#0f172a', opacity: 0.9, textAlign: 'center', lineHeight: 1 }}>
+              {it.subject || '—'}
+            </div>
+          </div>
         )}
       </td>
     );
@@ -565,18 +608,46 @@ export default function Emploi() {
             <RefreshCw size={16} /> Actualiser
           </button>
 
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedMode('classe')}
+              style={{ padding: '10px 14px', borderRadius: 12, border: selectedMode === 'classe' ? `1px solid ${BLUE}` : '1px solid #e2e8f0', background: selectedMode === 'classe' ? '#eff6ff' : '#fff', color: selectedMode === 'classe' ? BLUE : '#475569', cursor: 'pointer', fontWeight: 900 }}
+            >
+              Par classe
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedMode('salle')}
+              style={{ padding: '10px 14px', borderRadius: 12, border: selectedMode === 'salle' ? `1px solid ${BLUE}` : '1px solid #e2e8f0', background: selectedMode === 'salle' ? '#eff6ff' : '#fff', color: selectedMode === 'salle' ? BLUE : '#475569', cursor: 'pointer', fontWeight: 900 }}
+            >
+              Par salle
+            </button>
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: '#fff', border: '1px solid #e2e8f0' }}>
-            <School size={16} color={BLUE} />
-            <select value={selectedClasse} onChange={(e) => setSelectedClasse(e.target.value)} style={{ ...inp, border: 'none', padding: 0, width: 220 }}>
-              <option value="">-- Sélectionner classe --</option>
-              {classes.map((c) => (
-                <option key={c.idClasse} value={c.idClasse}>{c.libelle}</option>
-              ))}
-            </select>
+            {selectedMode === 'classe' ? <School size={16} color={BLUE} /> : <DoorOpen size={16} color={BLUE} />}
+            {selectedMode === 'classe' ? (
+              <select value={selectedClasse} onChange={(e) => setSelectedClasse(e.target.value)} style={{ ...inp, border: 'none', padding: 0, width: 220 }}>
+                <option value="">-- Sélectionner classe --</option>
+                {classes.map((c) => (
+                  <option key={c.idClasse} value={c.idClasse}>{c.libelle}</option>
+                ))}
+              </select>
+            ) : (
+              <select value={selectedSalle} onChange={(e) => setSelectedSalle(e.target.value)} style={{ ...inp, border: 'none', padding: 0, width: 220 }}>
+                <option value="">-- Sélectionner salle --</option>
+                {salles.map((s) => (
+                  <option key={s.idSalle} value={s.idSalle}>{s.libelle}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div style={{ fontSize: 12, color: '#64748b' }}>
-            {selectedClasse ? `${classItems.length} créneau(x) pour la classe` : 'Sélectionnez une classe pour afficher la grille'}
+            {selectedMode === 'classe'
+              ? (selectedClasse ? `${selectedItems.length} créneau(x) pour la classe` : 'Sélectionnez une classe pour afficher la grille')
+              : (selectedSalle ? `${selectedItems.length} créneau(x) pour la salle` : 'Sélectionnez une salle pour afficher la grille')}
           </div>
         </div>
 
@@ -598,20 +669,20 @@ export default function Emploi() {
 
           <button
             onClick={() => openCreate(1, '08:00')}
-            disabled={!selectedClasse}
+            disabled={selectedMode === 'classe' ? !selectedClasse : !selectedSalle}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 8,
               padding: '10px 18px',
               borderRadius: 12,
-              background: selectedClasse ? ORANGE : '#fed7aa',
-              color: selectedClasse ? '#fff' : '#9a3412',
+              background: (selectedMode === 'classe' ? selectedClasse : selectedSalle) ? ORANGE : '#fed7aa',
+              color: (selectedMode === 'classe' ? selectedClasse : selectedSalle) ? '#fff' : '#9a3412',
               border: 'none',
-              cursor: selectedClasse ? 'pointer' : 'not-allowed',
+              cursor: (selectedMode === 'classe' ? selectedClasse : selectedSalle) ? 'pointer' : 'not-allowed',
               fontSize: 13,
               fontWeight: 950,
-              boxShadow: selectedClasse ? '0 12px 26px rgba(255,160,0,0.22)' : 'none',
+              boxShadow: (selectedMode === 'classe' ? selectedClasse : selectedSalle) ? '0 12px 26px rgba(255,160,0,0.22)' : 'none',
               whiteSpace: 'nowrap',
             }}
           >
@@ -714,9 +785,11 @@ export default function Emploi() {
               </tbody>
             </table>
 
-            {!selectedClasse && (
+            {!((selectedMode === 'classe' ? selectedClasse : selectedSalle)) && (
               <div style={{ padding: 16, fontSize: 12, color: '#94a3b8' }}>
-                Sélectionnez une classe pour afficher et modifier son emploi du temps.
+                {selectedMode === 'classe'
+                  ? 'Sélectionnez une classe pour afficher et modifier son emploi du temps.'
+                  : 'Sélectionnez une salle pour afficher et modifier son emploi du temps.'}
               </div>
             )}
           </div>

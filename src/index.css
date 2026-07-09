@@ -35,10 +35,10 @@ a:hover { text-decoration: underline; }
 nav, .nav-list { border: none !important; }
 
 /* Card utility for consistent rounded cards */
-.card { background: var(--surface); border-radius: 1rem; box-shadow: 0 6px 20px rgba(2,6,23,0.06); border: none; }
+.card { background: var(--surface); border-radius: 1rem; box-shadow: 0 6px 20px rgba(2,6,23,0.06); border: none; min-width: 0; }
 
 /* Apply subtle global surface look to typical panels */
-.panel { background: var(--surface); border-radius: 1rem; padding: 1rem; box-shadow: 0 4px 18px rgba(2,6,23,0.04); }
+.panel { background: var(--surface); border-radius: 1rem; padding: 1rem; box-shadow: 0 4px 18px rgba(2,6,23,0.04); min-width: 0; }
 
 /* Accent colors */
 .text-primary { color: var(--primary); }

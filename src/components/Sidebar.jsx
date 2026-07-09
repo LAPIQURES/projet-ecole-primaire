@@ -69,15 +69,22 @@ const intendantNavGroups = [
   {
     label: 'Trésorerie',
     items: [
-      { name: 'Tableau de bord Intendant', icon: CreditCard, path: '/intendant/dashboard' },
-      { name: 'Paiements', icon: CreditCard, path: '/paiements' },
-      { name: 'Tranches', icon: ClipboardList, path: '/tranches' },
+      { name: 'Tableau de bord', icon: LayoutDashboard, path: '/intendant/dashboard' },
+      { name: 'Paiements', icon: CreditCard, path: '/intendant/paiements' },
+      { name: 'Tranches', icon: ClipboardList, path: '/intendant/tranches' },
     ],
   },
   {
     label: 'Suivi',
     items: [
-      { name: 'Elèves en impayé', icon: Users, path: '/paiements?filter=impayes' },
+      { name: 'Élèves en impayé', icon: Users, path: '/intendant/impayes' },
+      { name: 'Inscriptions', icon: BookOpen, path: '/inscriptions' },
+    ],
+  },
+  {
+    label: 'Mon compte',
+    items: [
+      { name: 'Mon Profil', icon: UserCog, path: '/intendant/profil' },
     ],
   },
 ];

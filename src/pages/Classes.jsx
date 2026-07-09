@@ -20,7 +20,7 @@ const inp = {
   background: '#fff',
 };
 
-const EMPTY_FORM = { libelle: '', idCycle: '' };
+const EMPTY_FORM = { libelle: '', idCycle: '', pension: '' };
 
 export default function Classes() {
   const [classes, setClasses] = useState([]);
@@ -181,25 +181,22 @@ export default function Classes() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, marginBottom: 18 }}>
-        <div className="card" style={{ padding: 18, transition: 'box-shadow 180ms ease' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 14, background: 'linear-gradient(135deg, #0062ff, #ffa000)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <School size={20} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(260px, 320px)', gap: 14, marginBottom: 16, alignItems: 'start' }}>
+        <div className="card" style={{ padding: 16, transition: 'box-shadow 180ms ease', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 14, background: 'linear-gradient(135deg, #0062ff, #ffa000)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+              <School size={18} />
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 950, color: '#0f172a' }}>Gestion des classes</div>
               <div style={{ fontSize: 12, color: '#64748b' }}>{classes.length} classe(s) au total</div>
             </div>
           </div>
-          <div style={{ fontSize: 13, color: '#475569' }}>
-            Thème unifié: bleu <span style={{ fontWeight: 900, color: BLUE }}>#0062ff</span> et orange <span style={{ fontWeight: 900, color: ORANGE }}>#ffa000</span>.
-          </div>
         </div>
 
-        <div className="card" style={{ padding: 18, transition: 'box-shadow 180ms ease' }}>
+        <div className="card" style={{ padding: 16, transition: 'box-shadow 180ms ease', minWidth: 0, maxHeight: 280, overflow: 'auto' }}>
           <div style={{ fontSize: 13, fontWeight: 950, color: '#0f172a', marginBottom: 8 }}>Cycles disponibles</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {cycles.length > 0 ? cycles.map((cycle) => (
               <span key={cycle.idCycle} style={{ padding: '6px 10px', borderRadius: 999, background: '#f1f5f9', color: '#475569', fontSize: 12, border: '1px solid #e2e8f0' }}>
                 {cycle.libelle}
@@ -261,6 +258,13 @@ export default function Classes() {
                   ))}
                 </div>
               </div>
+              {!editingId && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 900, color: '#475569', display: 'block', marginBottom: 6 }}>Prix de la scolarité (FCFA)</label>
+                  <input type="number" placeholder="Ex: 150000" value={formData.pension} onChange={(e) => setFormData({ ...formData, pension: e.target.value })} style={inp} />
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Le système génèrera automatiquement 3 tranches pour cette classe.</div>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                 <button type="submit" disabled={saving} style={{ flex: 1, padding: '12px', background: saving ? '#93c5fd' : BLUE, color: '#fff', border: 'none', borderRadius: 12, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 950, boxShadow: '0 12px 26px rgba(0,98,255,0.18)' }}>
                   {saving ? 'Enregistrement…' : (editingId ? 'Mettre à jour' : 'Enregistrer')}

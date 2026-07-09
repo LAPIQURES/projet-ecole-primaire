@@ -120,7 +120,7 @@ export default function Parents() {
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [form, setForm] = useState({ nom: '', prenom: '', mobile: '', phone: '', password: '', matricule: '' });
+  const [form, setForm] = useState({ nom: '', prenom: '', mobile: '', phone: '', password: '', matricules: [], isUser: true, username: '', numChildren: 1 });
 
   useEffect(() => { load(); }, []);
 
@@ -141,8 +141,8 @@ export default function Parents() {
     }
   };
 
-  const openAdd = () => { setEditing(null); setForm({ nom: '', prenom: '', mobile: '', phone: '', password: '', matricule: '' }); setError(''); setShowModal(true); };
-  const openEdit = (p) => { setEditing(p); setForm({ nom: p.nom, prenom: p.prenom, mobile: p.mobile || '', phone: p.phone || '', password: '', matricule: p.matricule || '' }); setError(''); setShowModal(true); };
+  const openAdd = () => { setEditing(null); setForm({ nom: '', prenom: '', mobile: '', phone: '', password: '', matricules: [], isUser: true, username: '', numChildren: 1 }); setError(''); setShowModal(true); };
+  const openEdit = (p) => { setEditing(p); setForm({ nom: p.nom, prenom: p.prenom, mobile: p.mobile || '', phone: p.phone || '', password: '', matricules: (p.children || []).map(c => c.matricule), isUser: !!p.username, username: p.username || '', numChildren: (p.children || []).length || 1 }); setError(''); setShowModal(true); };
 
   const toggleActive = async (p) => {
     try {
@@ -158,12 +158,19 @@ export default function Parents() {
 
   const handleSubmit = async () => {
     if (!form.nom || !form.prenom) { setError('Nom et prénom requis'); return; }
-    if (!form.matricule) { setError('Veuillez sélectionner un élève'); return; }
-    if (!editing && !form.password) { setError('Mot de passe requis pour un nouveau parent'); return; }
+    if (!form.matricules || form.matricules.length === 0) { setError('Veuillez sélectionner au moins un élève'); return; }
+    if ((form.matricules || []).length !== Number(form.numChildren || 1)) { setError(`Veuillez sélectionner exactement ${form.numChildren} enfant(s)`); return; }
+    if (form.isUser && !editing && !form.password) { setError('Mot de passe requis pour un nouveau parent utilisateur'); return; }
     setError('');
     try {
-      if (editing) { await updateParentAPI(editing.idParent, form); setSuccess('Parent modifié !'); }
-      else { await createParentAPI(form); setSuccess('Parent créé !'); }
+      let res;
+      if (editing) { res = await updateParentAPI(editing.idParent, form); setSuccess('Parent modifié !'); }
+      else { res = await createParentAPI(form); setSuccess('Parent créé !'); }
+      // If backend returned login info, show it briefly
+      if (res && res.data && res.data.loginInfo) {
+        const li = res.data.loginInfo;
+        setSuccess(`Parent créé ! Identifiant: ${li.username} / Mot de passe: ${li.password}`);
+      }
       setShowModal(false); load(); setTimeout(() => setSuccess(''), 3000);
     } catch (e) { setError(e.response?.data?.error || 'Erreur lors de l\'enregistrement'); }
   };
@@ -290,7 +297,31 @@ export default function Parents() {
             <div><label style={s.label}>Téléphone</label><input style={s.inp} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="Ex: 677000000" /></div>
             <div><label style={s.label}>Mot de passe {!editing && '*'}</label><input style={s.inp} type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder={editing ? 'Laisser vide pour ne pas modifier' : 'Mot de passe initial'} /></div>
             <div style={{ gridColumn: '1/-1' }}>
-              <EleveSearch value={form.matricule} onChange={(val) => setForm({ ...form, matricule: val })} />
+              <EleveSearch onChange={(val) => {
+                if (!val) return;
+                if ((form.matricules || []).includes(val)) return;
+                if ((form.matricules || []).length >= Number(form.numChildren || 1)) { setError(`Vous avez déjà sélectionné ${form.numChildren} enfant(s)`); return; }
+                setForm({ ...form, matricules: [...(form.matricules || []), val] });
+              }} />
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                {(form.matricules || []).map(m => {
+                  const child = (selectedParent?.children || []).find(c => c.matricule === m) || { matricule: m };
+                  return (
+                    <div key={m} style={{ padding: '6px 10px', background: '#f1f5f9', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700 }}>{child.prenom ? `${child.prenom} ${child.nom}` : child.matricule}</div>
+                      <button onClick={() => setForm({ ...form, matricules: form.matricules.filter(x => x !== m) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={12} /></button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div><label style={s.label}>Nom d'utilisateur</label><input style={s.inp} value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} placeholder="Nom d'utilisateur (laisser vide pour génération automatique)" disabled={!form.isUser} /></div>
+            <div><label style={s.label}>Nombre d'enfants *</label><input style={s.inp} type="number" min={1} max={10} value={form.numChildren} onChange={e => setForm({ ...form, numChildren: Math.max(1, Number(e.target.value || 1)) })} /></div>
+            <div style={{ gridColumn: '1/-1' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input type="checkbox" checked={!form.isUser} onChange={(e) => setForm({ ...form, isUser: !e.target.checked })} />
+                <span style={{ fontSize: '13px' }}>Non utilisateur (ne pas créer de compte parent)</span>
+              </label>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>

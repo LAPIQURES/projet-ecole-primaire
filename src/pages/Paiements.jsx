@@ -21,21 +21,54 @@ export default function Paiements({ noLayout = false }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [selected, setSelected] = useState(null);
+  const [salles, setSalles] = useState([]);
+  const [eleves, setEleves] = useState([]);
+  const [selectedSalle, setSelectedSalle] = useState('');
+  const [scolariteInfo, setScolariteInfo] = useState(null);
+  const [paymentOption, setPaymentOption] = useState('custom');
   const [formData, setFormData] = useState({ matricule: '', montant: '', idMode: '', commentaire: '', datePaie: new Date().toISOString().split('T')[0] });
 
   useEffect(() => { loadAll(); }, []);
+
+  useEffect(() => {
+    if (formData.matricule && formData.matricule.length >= 4) {
+      axios.get(`${API_URL}/paiements/scolarite/${formData.matricule}`, auth())
+        .then(res => setScolariteInfo(res.data))
+        .catch(() => setScolariteInfo(null));
+    } else {
+      setScolariteInfo(null);
+    }
+  }, [formData.matricule]);
+
+  const handlePaymentOptionChange = (e) => {
+    const val = e.target.value;
+    setPaymentOption(val);
+    if (!scolariteInfo) return;
+    
+    if (val === 'full') {
+      setFormData(prev => ({ ...prev, montant: scolariteInfo.pension }));
+    } else if (val === 'tranche1' && scolariteInfo.tranches[0]) {
+      setFormData(prev => ({ ...prev, montant: scolariteInfo.tranches[0].montant }));
+    } else if (val === 'tranche2' && scolariteInfo.tranches[0] && scolariteInfo.tranches[1]) {
+      setFormData(prev => ({ ...prev, montant: Number(scolariteInfo.tranches[0].montant) + Number(scolariteInfo.tranches[1].montant) }));
+    }
+  };
 
   const auth = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [pRes, mRes] = await Promise.all([
+      const [pRes, mRes, sRes, eRes] = await Promise.all([
         axios.get(`${API_URL}/paiements`, auth()),
         axios.get(`${API_URL}/paiements/modes`, auth()).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/salles`, auth()).catch(() => ({ data: [] })),
+        axios.get(`${API_URL}/eleves`, auth()).catch(() => ({ data: [] }))
       ]);
       setPaiements(Array.isArray(pRes.data) ? pRes.data : []);
       setModes(Array.isArray(mRes.data) ? mRes.data : []);
+      setSalles(Array.isArray(sRes.data) ? sRes.data : []);
+      setEleves(Array.isArray(eRes.data) ? eRes.data : []);
     } catch (err) {
       setError('Erreur chargement paiements');
     } finally { setLoading(false); }
@@ -114,16 +147,63 @@ export default function Paiements({ noLayout = false }) {
             </div>
             {error && <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, color: '#dc2626', fontSize: 13 }}><AlertCircle size={14} style={{ marginRight: 6 }} />{error}</div>}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              {[
-                { label: 'Matricule élève *', key: 'matricule', type: 'number', ph: 'Ex: 12345' },
-                { label: 'Montant (FCFA) *', key: 'montant', type: 'number', ph: 'Ex: 50000' },
-                { label: 'Date de paiement', key: 'datePaie', type: 'date' },
-              ].map(f => (
-                <div key={f.key}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>{f.label}</label>
-                  <input type={f.type} placeholder={f.ph} value={formData[f.key]} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })} style={inp} />
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Saisie libre matricule *</label>
+                <input type="number" placeholder="Ex: 12345" value={formData.matricule} onChange={e => setFormData({ ...formData, matricule: e.target.value })} style={inp} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Ou filtrer par salle</label>
+                <select value={selectedSalle} onChange={e => setSelectedSalle(e.target.value)} style={inp}>
+                  <option value="">-- Toutes les salles --</option>
+                  {salles.map(s => <option key={s.idSalle} value={s.idSalle}>{s.libelle}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Ou sélectionner un élève</label>
+                <select value={formData.matricule} onChange={e => setFormData({ ...formData, matricule: e.target.value })} style={inp}>
+                  <option value="">-- Choisir un élève --</option>
+                  {eleves.filter(e => !selectedSalle || e.idSalle == selectedSalle).map(e => (
+                    <option key={e.matricule} value={e.matricule}>{e.nom} {e.prenom} ({e.matricule})</option>
+                  ))}
+                </select>
+              </div>
+
+              {scolariteInfo && scolariteInfo.pension > 0 && (
+                <div style={{ gridColumn: '1 / -1', background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 8 }}>Options de paiement suggérées</label>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" name="payOpt" value="full" checked={paymentOption === 'full'} onChange={handlePaymentOptionChange} />
+                      Totalité ({scolariteInfo.pension} FCFA)
+                    </label>
+                    {scolariteInfo.tranches.length >= 1 && (
+                      <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input type="radio" name="payOpt" value="tranche1" checked={paymentOption === 'tranche1'} onChange={handlePaymentOptionChange} />
+                        1 Tranche ({scolariteInfo.tranches[0].montant} FCFA)
+                      </label>
+                    )}
+                    {scolariteInfo.tranches.length >= 2 && (
+                      <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input type="radio" name="payOpt" value="tranche2" checked={paymentOption === 'tranche2'} onChange={handlePaymentOptionChange} />
+                        2 Tranches ({Number(scolariteInfo.tranches[0].montant) + Number(scolariteInfo.tranches[1].montant)} FCFA)
+                      </label>
+                    )}
+                    <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input type="radio" name="payOpt" value="custom" checked={paymentOption === 'custom'} onChange={handlePaymentOptionChange} />
+                      Saisie libre
+                    </label>
+                  </div>
                 </div>
-              ))}
+              )}
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Montant (FCFA) *</label>
+                <input type="number" placeholder="Ex: 50000" value={formData.montant} onChange={e => { setFormData({ ...formData, montant: e.target.value }); setPaymentOption('custom'); }} style={inp} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Date de paiement</label>
+                <input type="date" value={formData.datePaie} onChange={e => setFormData({ ...formData, datePaie: e.target.value })} style={inp} />
+              </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Mode de paiement</label>
                 <select value={formData.idMode} onChange={e => setFormData({ ...formData, idMode: e.target.value })} style={inp}>

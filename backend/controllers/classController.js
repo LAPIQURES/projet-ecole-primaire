@@ -51,13 +51,38 @@ exports.getClassById = async (req, res) => {
 
 exports.createClass = async (req, res) => {
   try {
-    const { libelle, idCycle } = req.body;
+    const { libelle, idCycle, pension } = req.body;
     if (!libelle) return res.status(400).json({ error: 'Libelle requis' });
     if (!idCycle) return res.status(400).json({ error: 'Veuillez sélectionner un cycle' });
     const idAdmin = req.user?.id || 1000;
+    
+    // Create Classe
     const [result] = await pool.query(
       `INSERT INTO Classe (libelle, idCycle, idAdmin, created_at) VALUES (?, ?, ?, NOW())`,
       [libelle, idCycle, idAdmin]);
+      
+    // Handle Scolarite & Tranches
+    if (pension && !isNaN(pension)) {
+      const montantPension = Number(pension);
+      const [scolResult] = await pool.query(
+        `INSERT INTO Scolarite (inscription, pension, nbreTranche, description, idCycle, idClasse, idFondateur, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [0, montantPension, 3, '', idCycle, result.insertId, 1]
+      );
+      
+      const idScolarite = scolResult.insertId;
+      const t1 = Math.round(montantPension / 3);
+      const t2 = Math.round(montantPension / 3);
+      const t3 = montantPension - (t1 + t2);
+      
+      await pool.query(
+        `INSERT INTO Tranches (libelle, montant, delai_mois, delai_jour, idScolarite, actif, idFondateur) VALUES 
+        ('Tranche 1', ?, '', '', ?, 1, 1),
+        ('Tranche 2', ?, '', '', ?, 1, 1),
+        ('Tranche 3', ?, '', '', ?, 1, 1)`,
+        [t1, idScolarite, t2, idScolarite, t3, idScolarite]
+      );
+    }
+    
     const [rows] = await pool.query(
       `SELECT cl.*, cy.libelle AS cycle FROM Classe cl LEFT JOIN Cycle cy ON cy.idCycle = cl.idCycle WHERE cl.idClasse = ?`,
       [result.insertId]);

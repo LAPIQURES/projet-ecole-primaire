@@ -1,4 +1,5 @@
 const pool = require('../database/db');
+const bcrypt = require('bcrypt');
 
 async function getNextIdPers() {
   const [rows] = await pool.query('SELECT COALESCE(MAX(idPers), 0) + 1 AS nextId FROM Personne');
@@ -51,46 +52,65 @@ exports.getParentById = async (req, res) => {
 
 exports.createParent = async (req, res) => {
   try {
-    const { nom, prenom, mobile, phone, matricule, password } = req.body;
+    const { nom, prenom, mobile, phone, matricule, matricules, password, isUser = true, username: reqUsername } = req.body;
     if (!nom || !prenom) return res.status(400).json({ error: 'Nom et prénom requis' });
-    
-    // Validate password if provided
-    const finalPassword = password || '1234'; // Default fallback password
-    if (!password) {
-      console.warn(`⚠️ Parent ${nom} ${prenom} created without password, using default: 1234`);
-    }
-    
+
     const idAdmin = req.user?.id || 1000;
     const idPers = await getNextIdPers();
 
-    // Insert parent person record
+    // Decide username/password based on isUser flag
+    let username = null;
+    let storedPassword = null;
+    let plainPassword = null;
+
+    if (isUser) {
+      // prefer provided username
+      if (reqUsername) {
+        // ensure uniqueness
+        const [exists] = await pool.query('SELECT idPers FROM Personne WHERE username = ? LIMIT 1', [reqUsername]);
+        if (exists.length) return res.status(400).json({ error: 'Nom d\'utilisateur déjà utilisé' });
+        username = reqUsername;
+      } else {
+        username = `parent${idPers}`;
+      }
+      plainPassword = password || '1234';
+      if (!password) console.warn(`⚠️ Parent ${nom} ${prenom} created without password, using default: 1234`);
+      storedPassword = await bcrypt.hash(plainPassword, 10);
+    }
+
+    // Insert parent person record; only set username/password if isUser
     await pool.query(
       `INSERT INTO Personne (idPers, nom, prenom, mobile, phone, typePersonne, dateNaissance, lieuNaissance, username, password, idAdmin, created_at)
-       VALUES (?, ?, ?, ?, ?, 3, '2000-01-01', '', '', ?, ?, NOW())`,
-      [idPers, nom, prenom, mobile || '', phone || '', finalPassword, idAdmin]
+       VALUES (?, ?, ?, ?, ?, 3, '2000-01-01', '', ?, ?, ?, NOW())`,
+      [idPers, nom, prenom, mobile || '', phone || '', username, storedPassword, idAdmin]
     );
 
     const [result] = await pool.query(
-      `INSERT INTO Parents (idPers, matricule, idAdmin, created_at) VALUES (?, ?, ?, NOW())`,
-      [idPers, matricule || null, idAdmin]
+      `INSERT INTO Parents (idPers, matricule, idAdmin, created_at) VALUES (?, '', ?, NOW())`,
+      [idPers, idAdmin]
     );
 
-    // If matricule provided, create parent-eleve link
-    if (matricule) {
-      const [eleve] = await pool.query('SELECT matricule FROM Eleve WHERE matricule = ?', [matricule]);
-      if (!eleve.length) return res.status(400).json({ error: 'Élève non trouvé' });
-      await pool.query(
-        'INSERT INTO ParentEleve (idPers, matricule) VALUES (?, ?)',
-        [idPers, matricule]
-      );
+    // Handle children links: accept either single `matricule` or array `matricules`
+    const children = Array.isArray(matricules) ? matricules : (matricule ? [matricule] : []);
+    for (const m of children) {
+      const [eleve] = await pool.query('SELECT matricule FROM Eleve WHERE matricule = ?', [m]);
+      if (!eleve.length) return res.status(400).json({ error: `Élève non trouvé: ${m}` });
+      const [existing] = await pool.query('SELECT * FROM ParentEleve WHERE idPers = ? AND matricule = ?', [idPers, m]);
+      if (!existing.length) {
+        await pool.query('INSERT INTO ParentEleve (idPers, matricule) VALUES (?, ?)', [idPers, m]);
+      }
     }
 
     const [rows] = await pool.query(`
-      SELECT pr.idParent, pr.idPers, p.nom, p.prenom, p.mobile, p.phone
+      SELECT pr.idParent, pr.idPers, p.nom, p.prenom, p.mobile, p.phone, p.username
       FROM Parents pr
       JOIN Personne p ON p.idPers = pr.idPers
       WHERE pr.idParent = ?`, [result.insertId]);
-    res.status(201).json(rows[0]);
+
+    const created = rows[0];
+    // Include login info for convenience in admin UI (plain password only when generated here)
+    const loginInfo = isUser ? { username: created.username, password: plainPassword } : null;
+    res.status(201).json({ parent: created, loginInfo });
   } catch (error) {
     console.error('createParent error:', error.message);
     res.status(500).json({ error: error.message });
@@ -99,42 +119,52 @@ exports.createParent = async (req, res) => {
 
 exports.updateParent = async (req, res) => {
   try {
-    const { nom, prenom, mobile, phone, matricule, password } = req.body;
+    const { nom, prenom, mobile, phone, matricule, matricules, password, isUser, username: reqUsername } = req.body;
     const [parent] = await pool.query('SELECT idPers FROM Parents WHERE idParent = ?', [req.params.id]);
     if (!parent.length) return res.status(404).json({ error: 'Parent non trouvé' });
-    
+    const idPers = parent[0].idPers;
+
     // Update personal info including password if provided
     const updateFields = ['nom=?', 'prenom=?', 'mobile=?', 'phone=?'];
     const updateValues = [nom, prenom, mobile || '', phone || ''];
-    
+
     if (password) {
+      const hashed = await bcrypt.hash(password, 10);
       updateFields.push('password=?');
-      updateValues.push(password);
+      updateValues.push(hashed);
     }
-    
-    updateValues.push(parent[0].idPers);
-    
+
+    if (reqUsername) {
+      // ensure unique username (exclude current person)
+      const [exists] = await pool.query('SELECT idPers FROM Personne WHERE username = ? AND idPers <> ? LIMIT 1', [reqUsername, idPers]);
+      if (exists.length) return res.status(400).json({ error: 'Nom d\'utilisateur déjà utilisé' });
+      updateFields.push('username=?');
+      updateValues.push(reqUsername);
+    }
+
+    // Handle isUser flag: if explicitly set to false, clear username/password
+    if (isUser === false) {
+      updateFields.push('username=?');
+      updateValues.push(null);
+      updateFields.push('password=?');
+      updateValues.push(null);
+    }
+
+    updateValues.push(idPers);
+
     await pool.query(`UPDATE Personne SET ${updateFields.join(',')} WHERE idPers=?`, updateValues);
 
-    if (matricule !== undefined) {
-      await pool.query('UPDATE Parents SET matricule = ? WHERE idParent = ?', [matricule || null, req.params.id]);
-    }
-    
-    // Handle matricule - add/update parent-eleve link
-    if (matricule !== undefined && matricule) {
-      const [eleve] = await pool.query('SELECT matricule FROM Eleve WHERE matricule = ?', [matricule]);
-      if (!eleve.length) return res.status(400).json({ error: 'Élève non trouvé' });
-      
-      const [existing] = await pool.query(
-        'SELECT * FROM ParentEleve WHERE idPers = ? AND matricule = ?',
-        [parent[0].idPers, matricule]
-      );
-      
-      if (!existing.length) {
-        await pool.query(
-          'INSERT INTO ParentEleve (idPers, matricule) VALUES (?, ?)',
-          [parent[0].idPers, matricule]
-        );
+    // Synchronize ParentEleve links when matricules provided (array) or single matricule
+    if (matricules !== undefined || matricule !== undefined) {
+      const children = Array.isArray(matricules) ? matricules : (matricule ? [matricule] : []);
+      // Remove existing links
+      await pool.query('DELETE FROM ParentEleve WHERE idPers = ?', [idPers]);
+      // Insert new links
+      for (const m of children) {
+        if (!m) continue;
+        const [eleve] = await pool.query('SELECT matricule FROM Eleve WHERE matricule = ?', [m]);
+        if (!eleve.length) return res.status(400).json({ error: `Élève non trouvé: ${m}` });
+        await pool.query('INSERT INTO ParentEleve (idPers, matricule) VALUES (?, ?)', [idPers, m]);
       }
     }
     

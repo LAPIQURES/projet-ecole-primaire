@@ -406,10 +406,17 @@ function EnseignantDetailsModal({ enseignant, onClose, detailError }) {
 
   const theme = useMemo(() => ({ blue: '#0062ff', orange: '#ffa000' }), []);
   const fullName = `${enseignant?.prenom || ''} ${enseignant?.nom || ''}`.trim() || '—';
-  const classes = Array.isArray(enseignant?.classes) ? enseignant.classes : [];
-  const salles = Array.isArray(enseignant?.salles) ? enseignant.salles : [];
-  const cours = Array.isArray(enseignant?.cours) ? enseignant.cours : [];
-  const calendrier = Array.isArray(enseignant?.calendrier) ? enseignant.calendrier : [];
+  const normalizeArray = (value) => (Array.isArray(value) ? value : value ? [value] : []);
+  const classes = normalizeArray(enseignant?.classes);
+  const salles = normalizeArray(enseignant?.salles);
+  const cours = normalizeArray(enseignant?.cours);
+  const calendrier = normalizeArray(enseignant?.calendrier);
+  const courseLabel = (() => {
+    if (enseignant?.cours == null) return '—';
+    if (typeof enseignant.cours === 'string') return enseignant.cours;
+    if (typeof enseignant.cours === 'object') return enseignant.cours.libelle || enseignant.cours.classe || enseignant.cours.salle || enseignant.cours.subject || '—';
+    return String(enseignant.cours);
+  })();
   const stats = enseignant?.stats || {};
   const [view, setView] = React.useState('classes');
   const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -440,12 +447,13 @@ function EnseignantDetailsModal({ enseignant, onClose, detailError }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.60)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(2,6,23,0.60)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <style>{`
-        .ens-modal{width:100%; max-width:1180px; background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 30px 90px rgba(0,0,0,0.35)}
-        .ens-head{padding:16px 18px; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, rgba(0,98,255,0.12), rgba(255,160,0,0.12)); border-bottom:1px solid #eef2f7}
-        .ens-grid{display:grid; grid-template-columns: 320px 1fr 360px; gap:14px; padding:16px}
-        @media (max-width: 1060px){ .ens-grid{grid-template-columns: 1fr; } }
+        .ens-modal{width:100%; max-width:980px; max-height:calc(100vh - 40px); background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 30px 90px rgba(0,0,0,0.30); overflow-y:auto;}
+        .ens-head{padding:14px 16px; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, rgba(0,98,255,0.12), rgba(255,160,0,0.12)); border-bottom:1px solid #eef2f7}
+        .ens-grid{display:grid; grid-template-columns: minmax(260px, 320px) minmax(0, 1fr); gap:14px; padding:16px}
+        .ens-fullwidth{grid-column: 1 / -1;}
+        @media (max-width: 900px){ .ens-grid{grid-template-columns: 1fr; } .ens-fullwidth{grid-column: auto;} }
       `}</style>
 
       <div className="ens-modal" role="dialog" aria-modal="true">
@@ -463,7 +471,7 @@ function EnseignantDetailsModal({ enseignant, onClose, detailError }) {
               <AvatarCircle name={fullName} photoURL={enseignant?.photoURL} size={86} />
               <div>
                 <div style={{ fontSize: 16, fontWeight: 1000, color: '#0f172a' }}>{fullName}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: theme.blue }}>{enseignant?.cours || '—'}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: theme.blue }}>{courseLabel}</div>
               </div>
             </div>
 
@@ -609,7 +617,7 @@ function EnseignantDetailsModal({ enseignant, onClose, detailError }) {
             </div>
           </div>
 
-          <div style={{ border: '1px solid #eef2f7', borderRadius: 16, padding: 14, background: '#fff' }}>
+          <div className="ens-fullwidth" style={{ border: '1px solid #eef2f7', borderRadius: 16, padding: 14, background: '#fff' }}>
             <div style={{ padding: 12, borderRadius: 16, background: 'linear-gradient(135deg, rgba(0,98,255,0.10), rgba(255,160,0,0.10))', border: '1px solid #eef2f7' }}>
               <CalendarMonth year={new Date().getFullYear()} month={new Date().getMonth()} activeWeekdays={activeWeekdays} />
             </div>
@@ -619,3 +627,4 @@ function EnseignantDetailsModal({ enseignant, onClose, detailError }) {
     </div>
   );
 }
+

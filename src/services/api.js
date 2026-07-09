@@ -88,6 +88,13 @@ export const createSalleAPI = (data) => API.post('/salles', data);
 export const updateSalleAPI = (id, data) => API.put(`/salles/${id}`, data);
 export const deleteSalleAPI = (id) => API.delete(`/salles/${id}`);
 
+// Personnel
+export const getPersonnelAPI = () => API.get('/personnel');
+export const getPersonnelByIdAPI = (id) => API.get(`/personnel/${id}`);
+export const createPersonnelAPI = (data) => API.post('/personnel', data);
+export const updatePersonnelAPI = (id, data) => API.put(`/personnel/${id}`, data);
+export const deletePersonnelAPI = (id) => API.delete(`/personnel/${id}`);
+
 // Parents
 export const getParentsAPI = () => API.get('/parents');
 export const getParentByIdAPI = (id) => API.get(`/parents/${id}`);

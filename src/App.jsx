@@ -16,6 +16,7 @@ import Paiements from './pages/Paiements';
 import Salles from './pages/Salles';
 import Parents from './pages/Parents';
 import Inscriptions from './pages/Inscriptions';
+import Impayes from './pages/Impayes';
 import Parametres from './pages/Parametres';
 import Messages from './pages/Messages';
 import { Calendar, MessageSquare, Settings, ClipboardList, BookOpen, Bus as BusIcon } from 'lucide-react';
@@ -125,6 +126,10 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Dashboard /></ProtectedRoute>} />
         <Route path="/directeur/dashboard" element={<ProtectedRoute allowedRoles={['directeur','admin','superadmin']}><DashboardDirecteur /></ProtectedRoute>} />
         <Route path="/intendant/dashboard" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin']}><DashboardIntendant /></ProtectedRoute>} />
+        <Route path="/intendant/paiements" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin']}><Paiements /></ProtectedRoute>} />
+        <Route path="/intendant/tranches" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin']}><Tranches /></ProtectedRoute>} />
+        <Route path="/intendant/impayes" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin','directeur']}><Impayes /></ProtectedRoute>} />
+        <Route path="/intendant/profil" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin']}><DashboardIntendant defaultTab="profil" /></ProtectedRoute>} />
         <Route path="/eleves" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Eleves /></ProtectedRoute>} />
         <Route path="/classes" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Classes /></ProtectedRoute>} />
         <Route path="/enseignants" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Enseignants /></ProtectedRoute>} />
@@ -133,7 +138,8 @@ export default function App() {
         <Route path="/bus" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><BusPage /></ProtectedRoute>} />
         <Route path="/bus-scolaire" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><BusPage /></ProtectedRoute>} />
         <Route path="/parents" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Parents /></ProtectedRoute>} />
-        <Route path="/inscriptions" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Inscriptions /></ProtectedRoute>} />
+        <Route path="/inscriptions" element={<ProtectedRoute allowedRoles={['admin','superadmin','intendant']}><Inscriptions /></ProtectedRoute>} />
+        <Route path="/impayes" element={<ProtectedRoute allowedRoles={['admin','superadmin','intendant','directeur']}><Impayes /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Parametres /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Messages /></ProtectedRoute>} />
         <Route path="/evaluations" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><CoursEvaluations /></ProtectedRoute>} />
