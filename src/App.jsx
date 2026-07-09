@@ -125,26 +125,27 @@ export default function App() {
         {/* ── ADMIN ── */}
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Dashboard /></ProtectedRoute>} />
         <Route path="/directeur/dashboard" element={<ProtectedRoute allowedRoles={['directeur','admin','superadmin']}><DashboardDirecteur /></ProtectedRoute>} />
+        <Route path="/directeur/profil" element={<ProtectedRoute allowedRoles={['directeur','admin','superadmin']}><DashboardDirecteur defaultTab="profil" /></ProtectedRoute>} />
         <Route path="/intendant/dashboard" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin']}><DashboardIntendant /></ProtectedRoute>} />
         <Route path="/intendant/paiements" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin']}><Paiements /></ProtectedRoute>} />
         <Route path="/intendant/tranches" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin']}><Tranches /></ProtectedRoute>} />
         <Route path="/intendant/impayes" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin','directeur']}><Impayes /></ProtectedRoute>} />
         <Route path="/intendant/profil" element={<ProtectedRoute allowedRoles={['intendant','admin','superadmin']}><DashboardIntendant defaultTab="profil" /></ProtectedRoute>} />
-        <Route path="/eleves" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Eleves /></ProtectedRoute>} />
-        <Route path="/classes" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Classes /></ProtectedRoute>} />
-        <Route path="/enseignants" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Enseignants /></ProtectedRoute>} />
-        <Route path="/paiements" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Paiements /></ProtectedRoute>} />
-        <Route path="/salles" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Salles /></ProtectedRoute>} />
+        <Route path="/eleves" element={<ProtectedRoute allowedRoles={['admin','superadmin','directeur']}><Eleves /></ProtectedRoute>} />
+        <Route path="/classes" element={<ProtectedRoute allowedRoles={['admin','superadmin','directeur']}><Classes /></ProtectedRoute>} />
+        <Route path="/enseignants" element={<ProtectedRoute allowedRoles={['admin','superadmin','directeur']}><Enseignants /></ProtectedRoute>} />
+        <Route path="/paiements" element={<ProtectedRoute allowedRoles={['admin','superadmin','directeur','intendant']}><Paiements /></ProtectedRoute>} />
+        <Route path="/salles" element={<ProtectedRoute allowedRoles={['admin','superadmin','directeur']}><Salles /></ProtectedRoute>} />
         <Route path="/bus" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><BusPage /></ProtectedRoute>} />
         <Route path="/bus-scolaire" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><BusPage /></ProtectedRoute>} />
         <Route path="/parents" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Parents /></ProtectedRoute>} />
-        <Route path="/inscriptions" element={<ProtectedRoute allowedRoles={['admin','superadmin','intendant']}><Inscriptions /></ProtectedRoute>} />
+        <Route path="/inscriptions" element={<ProtectedRoute allowedRoles={['admin','superadmin','intendant','directeur']}><Inscriptions /></ProtectedRoute>} />
         <Route path="/impayes" element={<ProtectedRoute allowedRoles={['admin','superadmin','intendant','directeur']}><Impayes /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Parametres /></ProtectedRoute>} />
         <Route path="/messages" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Messages /></ProtectedRoute>} />
         <Route path="/evaluations" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><CoursEvaluations /></ProtectedRoute>} />
-        <Route path="/tranches" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Tranches /></ProtectedRoute>} />
-        <Route path="/rapports" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Rapports /></ProtectedRoute>} />
+        <Route path="/tranches" element={<ProtectedRoute allowedRoles={['admin','superadmin','directeur','intendant']}><Tranches /></ProtectedRoute>} />
+        <Route path="/rapports" element={<ProtectedRoute allowedRoles={['admin','superadmin','directeur']}><Rapports /></ProtectedRoute>} />
         <Route path="/bulletins" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Bulletins /></ProtectedRoute>} />
         <Route path="/saisie-notes" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><SaisieNotes /></ProtectedRoute>} />
         <Route path="/personnel" element={<ProtectedRoute allowedRoles={['admin','superadmin']}><Personnel /></ProtectedRoute>} />

@@ -70,7 +70,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-export default function DashboardDirecteur() {
+export default function DashboardDirecteur({ defaultTab = 'overview' }) {
   const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
   const now = new Date();
   const heure = now.getHours();
@@ -83,7 +83,7 @@ export default function DashboardDirecteur() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [profileForm, setProfileForm] = useState({ nom: '', prenom: '', email: '', mobile: '', username: '' });
   const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [savingProfile, setSavingProfile] = useState(false);

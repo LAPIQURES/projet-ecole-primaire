@@ -120,11 +120,12 @@ exports.create = async (req, res) => {
     }
     // If the table uses 'heure' rather than start/end, map accordingly
     if (cols.includes('heure')) {
-      // store start time only (varchar(6))
+      const heureValue = endTime
+        ? `${String(startTime).slice(0,5)}-${String(endTime).slice(0,5)}`
+        : String(startTime).slice(0,5);
       insertCols.push('heure');
-      insertVals.push(String(startTime).slice(0,5));
+      insertVals.push(heureValue);
       valPlaceholders.push('?');
-      // also ensure 'jour' column is set when present
       if (cols.includes('jour')) {
         insertCols.push('jour');
         insertVals.push(body.jour || dayNumberToLabel(dayOfWeek));
@@ -220,8 +221,11 @@ exports.update = async (req, res) => {
     if (body.hasOwnProperty('idProf')) addIfExists('idProf', idProf);
     if (body.hasOwnProperty('subject')) addIfExists('subject', subject);
     if (cols.includes('heure')) {
+      const heureValue = endTime
+        ? `${String(startTime).slice(0,5)}-${String(endTime).slice(0,5)}`
+        : String(startTime).slice(0,5);
       setFragments.push('heure = ?');
-      setValues.push(String(startTime).slice(0,5));
+      setValues.push(heureValue);
       if (cols.includes('jour')) {
         setFragments.push('jour = ?');
         setValues.push(body.jour || dayNumberToLabel(dayOfWeek));

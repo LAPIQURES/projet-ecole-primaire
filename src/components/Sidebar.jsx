@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, BookOpen, UserCheck, Calendar,
   CreditCard, MessageSquare, LogOut, Settings,
   ChevronLeft, ChevronRight, GraduationCap, ClipboardList,
-  Building2, Bus, UserCog, FileText,
+  Building2, Bus, UserCog, FileText, School,
 } from 'lucide-react';
 
 const adminNavGroups = [
@@ -61,6 +61,22 @@ const directeurNavGroups = [
     items: [
       { name: 'Élèves', icon: Users, path: '/eleves' },
       { name: 'Enseignants', icon: UserCheck, path: '/enseignants' },
+      { name: 'Classes', icon: School, path: '/classes' },
+      { name: 'Salles', icon: Building2, path: '/salles' },
+    ],
+  },
+  {
+    label: 'Trésorerie',
+    items: [
+      { name: 'Paiements', icon: CreditCard, path: '/paiements' },
+      { name: 'Tranches', icon: ClipboardList, path: '/tranches' },
+      { name: 'Élèves en impayé', icon: Users, path: '/impayes' },
+    ],
+  },
+  {
+    label: 'Mon compte',
+    items: [
+      { name: 'Mon Profil', icon: UserCog, path: '/directeur/profil' },
     ],
   },
 ];

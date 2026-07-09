@@ -37,7 +37,7 @@ const DAYS = [
   { value: 5, short: 'Ven', label: 'Vendredi' },
 ];
 
-const HOURS = Array.from({ length: 10 }, (_, i) => 8 + i); // 8h → 17h
+const HOURS = Array.from({ length: 11 }, (_, i) => 7 + i); // 7h → 17h
 
 const normalizeScheduleDay = (value) => {
   const raw = String(value ?? '').trim();
@@ -50,6 +50,33 @@ const normalizeScheduleDay = (value) => {
   if (lower.startsWith('jeu')) return 4;
   if (lower.startsWith('ven')) return 5;
   return null;
+};
+
+const normalizeEmploiItem = (item, courses = []) => {
+  const normalized = { ...item };
+  normalized.id = item.id ?? item.idTemps ?? item.ID ?? item.Id;
+  normalized.dayOfWeek = normalizeScheduleDay(item.dayOfWeek ?? item.jour ?? item.day ?? item.day_of_week ?? item.jourDeSemaine) ?? normalized.dayOfWeek;
+  const rawHeure = String(item.heure ?? '').trim();
+  const heureParts = rawHeure.includes('-') ? rawHeure.split('-').map((p) => p.trim()) : [rawHeure];
+  normalized.startTime = normalizeTimeInput(item.startTime ?? heureParts[0] ?? item.start ?? item.heure_debut ?? item.time ?? '');
+  normalized.idProf = item.idProf ?? item.idEnseignant ?? item.id_prof ?? item.idProfesseur ?? item.idEnseignant;
+
+  if (item.endTime || item.fin_heure || item.end || item.heure_fin || item.finishTime || heureParts[1]) {
+    normalized.endTime = normalizeTimeInput(item.endTime ?? item.fin_heure ?? item.end ?? item.heure_fin ?? item.finishTime ?? heureParts[1]);
+  } else if (normalized.startTime) {
+    normalized.endTime = computeEndTime(normalized.startTime, 1);
+  }
+
+  if (!normalized.subject && item.idCours) {
+    const course = courses.find((c) => String(c.idCours || c.id) === String(item.idCours));
+    if (course) normalized.subject = course.libelle || course.label || normalized.subject;
+  }
+
+  if (!normalized.subject && item.subject) {
+    normalized.subject = item.subject;
+  }
+
+  return normalized;
 };
 
 const EMPTY_FORM = {
@@ -117,7 +144,8 @@ export default function Emploi() {
       ]);
 
       const fetchedItems = Array.isArray(eRes.data) ? eRes.data : [];
-      setItems(fetchedItems);
+      const normalizedItems = fetchedItems.map((item) => normalizeEmploiItem(item, Array.isArray(coursRes.data) ? coursRes.data : []));
+      setItems(normalizedItems);
       setSalles(Array.isArray(sRes.data) ? sRes.data : []);
       setProfs(Array.isArray(pRes.data) ? pRes.data : []);
       setClasses(Array.isArray(cRes.data) ? cRes.data : []);
@@ -125,19 +153,18 @@ export default function Emploi() {
 
       // DEBUG: log any slots mentioning "anglais" or using the common 'Anglais' course id
       try {
-        const matches = fetchedItems.filter((it) => {
+        const matches = normalizedItems.filter((it) => {
           const subj = String(it.subject || '').toLowerCase();
           if (subj.includes('anglais')) return true;
-          // fallback by idCours if available (seed uses idCours 31 for Anglais)
           if (String(it.idCours || '') === '31') return true;
           return false;
         });
         if (matches.length) {
           // eslint-disable-next-line no-console
-          console.info('DEBUG: Emploi items matching "Anglais":', matches);
+          console.info('DEBUG: Emploi normalized items matching "Anglais":', matches);
         } else {
           // eslint-disable-next-line no-console
-          console.info('DEBUG: No Emploi items found for "Anglais"');
+          console.info('DEBUG: No Emploi normalized items found for "Anglais"');
         }
       } catch (dbgErr) {
         // eslint-disable-next-line no-console
