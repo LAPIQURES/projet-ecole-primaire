@@ -35,7 +35,7 @@ exports.getDisciplineEleve = async (req, res) => {
           ELSE 'Présent'
         END AS status
       FROM Frequente f
-      LEFT JOIN Eleve e ON CAST(e.matricule AS CHAR) = f.matricule
+      LEFT JOIN Eleve e ON CAST(e.matricule AS CHAR) COLLATE utf8mb4_unicode_ci = f.matricule COLLATE utf8mb4_unicode_ci
       LEFT JOIN Salle s ON s.idSalle = f.idSalle
       WHERE 1=1
     `;
@@ -166,7 +166,7 @@ exports.getAbsenceData = async (req, res) => {
         MONTH(f.created_at) AS mois,
         YEAR(f.created_at) AS annee
       FROM Frequente f
-      LEFT JOIN Eleve e ON CAST(e.matricule AS CHAR) = f.matricule
+      LEFT JOIN Eleve e ON CAST(e.matricule AS CHAR) COLLATE utf8mb4_unicode_ci = f.matricule COLLATE utf8mb4_unicode_ci
       LEFT JOIN Salle s ON s.idSalle = f.idSalle
       LEFT JOIN Classe cl ON cl.idClasse = s.idClasse
       WHERE 1=1
@@ -179,14 +179,19 @@ exports.getAbsenceData = async (req, res) => {
       params.push(matricule);
     }
     
-    if (month) {
-      query += ` AND MONTH(f.created_at) = ?`;
-      params.push(month);
-    }
-    
-    if (year) {
-      query += ` AND YEAR(f.created_at) = ?`;
-      params.push(year);
+    if (req.query.date) {
+      query += ` AND DATE(f.created_at) = ?`;
+      params.push(req.query.date);
+    } else {
+      if (month) {
+        query += ` AND MONTH(f.created_at) = ?`;
+        params.push(month);
+      }
+      
+      if (year) {
+        query += ` AND YEAR(f.created_at) = ?`;
+        params.push(year);
+      }
     }
     
     query += ` ORDER BY f.created_at DESC LIMIT 500`;

@@ -1,6 +1,33 @@
 const pool = require('../database/db');
 
 // ─────────────────────────────────────────────
+// PUBLIC : stats publiques pour la Landing Page
+// ─────────────────────────────────────────────
+exports.getPublicStats = async (req, res) => {
+  try {
+    const [
+      [[eleves]],
+      [[enseignants]],
+      [[classes]],
+    ] = await Promise.all([
+      pool.query('SELECT COUNT(*) as total FROM Eleve WHERE actif = 1'),
+      pool.query('SELECT COUNT(*) as total FROM Enseignant'),
+      pool.query('SELECT COUNT(*) as total FROM Classe'),
+    ]);
+
+    res.json({
+      eleves: eleves.total || 0,
+      enseignants: enseignants.total || 0,
+      classes: classes.total || 0,
+      satisfaction: 98, // You can make this dynamic if you have a rating table
+    });
+  } catch (error) {
+    console.error('getPublicStats error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────
 // DIRECTEUR : stats globales de l'école
 // Schéma réel: Frequente.idScolarite → Scolarite (inscription + pension)
 // ─────────────────────────────────────────────

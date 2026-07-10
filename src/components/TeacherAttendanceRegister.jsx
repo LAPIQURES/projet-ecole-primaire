@@ -28,10 +28,25 @@ export default function TeacherAttendanceRegister() {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [timeSlot, setTimeSlot] = useState('Toute la journée');
+
+  const timeSlots = [
+    'Toute la journée',
+    '08h00 - 10h00',
+    '10h00 - 12h00',
+    '13h00 - 15h00',
+    '15h00 - 17h00'
+  ];
 
   useEffect(() => {
     loadClasses();
   }, []);
+
+  useEffect(() => {
+    if (selectedClass) {
+      loadStudents(selectedClass, date, timeSlot);
+    }
+  }, [date, timeSlot]);
 
   const loadClasses = async () => {
     try {
@@ -43,20 +58,39 @@ export default function TeacherAttendanceRegister() {
     }
   };
 
-  const loadStudents = async (idClasse) => {
+  const loadStudents = async (idClasse, targetDate = date, targetTimeSlot = timeSlot) => {
     try {
       const response = await getTeacherStudentsAPI();
       const allStudents = Array.isArray(response.data) ? response.data : [];
-      const selectedClass = classes.find((c) => String(c.idClasse) === String(idClasse));
-      const classStudents = selectedClass
-        ? allStudents.filter((s) => String(s.idClasse) === String(idClasse) || String(s.classe) === String(selectedClass.libelle))
+      const selectedClassObj = classes.find((c) => String(c.idClasse) === String(idClasse));
+      const classStudents = selectedClassObj
+        ? allStudents.filter((s) => String(s.idClasse) === String(idClasse) || String(s.classe) === String(selectedClassObj.libelle))
         : allStudents;
       setStudents(classStudents);
-      const init = {};
-      classStudents.forEach((s) => {
-        init[s.matricule] = 'present';
-      });
-      setAttendance(init);
+      
+      // Fetch existing attendance for this date
+      try {
+        const absRes = await API.get('/discipline/absences/list', { params: { date: targetDate } });
+        const records = absRes.data || [];
+        const init = {};
+        classStudents.forEach((s) => {
+          const record = records.find(r => 
+            String(r.matricule) === String(s.matricule) && 
+            (targetTimeSlot === 'Toute la journée' || r.commentaire?.includes(targetTimeSlot))
+          );
+          if (record && record.status === 'Absent') {
+            init[s.matricule] = 'absent';
+          } else {
+            init[s.matricule] = 'present';
+          }
+        });
+        setAttendance(init);
+      } catch (err) {
+        console.error('Error loading existing attendance:', err);
+        const initFallback = {};
+        classStudents.forEach((s) => { initFallback[s.matricule] = 'present'; });
+        setAttendance(initFallback);
+      }
     } catch (error) {
       console.error('Error loading students:', error);
       setStudents([]);
@@ -95,7 +129,7 @@ export default function TeacherAttendanceRegister() {
       for (const [matricule, status] of entries) {
         await API.post('/eleves/mark-attendance', {
           matricule,
-          commentaire: status === 'absent' ? 'Absent' : 'RAS',
+          commentaire: status === 'absent' ? `Absent - ${timeSlot}` : `RAS - ${timeSlot}`,
           date: date || new Date().toISOString().split('T')[0],
         });
       }
@@ -139,7 +173,7 @@ export default function TeacherAttendanceRegister() {
             <div>
               <h1>Fiche d'absence</h1>
               <div class="meta">Classe: <strong>${classLabel}</strong></div>
-              <div class="meta">Date: <strong>${date}</strong></div>
+              <div class="meta">Date: <strong>${date}</strong> | Heure: <strong>${timeSlot}</strong></div>
             </div>
             <div style="text-align:right">
               <div style="font-size:12px;color:#64748b">Plateforme École - Gestion Académique</div>
@@ -194,17 +228,23 @@ export default function TeacherAttendanceRegister() {
 
       {/* Filters */}
       <div style={s.card}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px', alignItems:'end' }}>
-          <div>
+        <div style={{ display:'flex', gap:'16px', alignItems:'end', flexWrap:'wrap' }}>
+          <div style={{ flex: '1', minWidth: '200px' }}>
             <label style={{ fontSize:'12px', fontWeight:'700', color:'#374151', display:'block', marginBottom:'6px' }}>CLASSE</label>
             <select value={selectedClass || ''} onChange={handleClassChange} style={{ ...s.inp, cursor:'pointer' }}>
               <option value="">-- Sélectionner une classe --</option>
               {classes.map(c => <option key={c.idClasse} value={c.idClasse}>{c.libelle}</option>)}
             </select>
           </div>
-          <div>
+          <div style={{ flex: '1', minWidth: '150px' }}>
             <label style={{ fontSize:'12px', fontWeight:'700', color:'#374151', display:'block', marginBottom:'6px' }}>DATE</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...s.inp, maxWidth:'180px' }} />
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...s.inp }} />
+          </div>
+          <div style={{ flex: '1', minWidth: '150px' }}>
+            <label style={{ fontSize:'12px', fontWeight:'700', color:'#374151', display:'block', marginBottom:'6px' }}>TRANCHE D'HEURE</label>
+            <select value={timeSlot} onChange={(e) => setTimeSlot(e.target.value)} style={{ ...s.inp, cursor:'pointer' }}>
+              {timeSlots.map(ts => <option key={ts} value={ts}>{ts}</option>)}
+            </select>
           </div>
         </div>
       </div>

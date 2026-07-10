@@ -51,19 +51,32 @@ const features = [
   },
 ];
 
-const stats = [
-  { value: '500+', label: 'Élèves gérés', icon: Users, color: '#6366f1' },
-  { value: '50+', label: 'Enseignants', icon: GraduationCap, color: '#10b981' },
-  { value: '98%', label: 'Satisfaction', icon: Star, color: '#f59e0b' },
-  { value: '24/7', label: 'Disponibilité', icon: Bell, color: '#8b5cf6' },
+const initialStats = [
+  { id: 'eleves', value: '...', label: 'Élèves gérés', icon: Users, color: '#6366f1' },
+  { id: 'enseignants', value: '...', label: 'Enseignants', icon: GraduationCap, color: '#10b981' },
+  { id: 'classes', value: '...', label: 'Classes', icon: BookOpen, color: '#f59e0b' },
+  { id: 'satisfaction', value: '98%', label: 'Satisfaction', icon: Star, color: '#8b5cf6' },
 ];
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [statsData, setStatsData] = useState(initialStats);
 
   useEffect(() => {
+    // Fetch real stats
+    fetch('http://localhost:5000/api/stats/public')
+      .then(res => res.json())
+      .then(data => {
+        setStatsData([
+          { id: 'eleves', value: data.eleves + '+', label: 'Élèves gérés', icon: Users, color: '#6366f1' },
+          { id: 'enseignants', value: data.enseignants + '+', label: 'Enseignants', icon: GraduationCap, color: '#10b981' },
+          { id: 'classes', value: data.classes + '', label: 'Classes', icon: BookOpen, color: '#f59e0b' },
+          { id: 'satisfaction', value: (data.satisfaction || 98) + '%', label: 'Satisfaction', icon: Star, color: '#8b5cf6' },
+        ]);
+      })
+      .catch(err => console.error('Error fetching stats:', err));
     // If already logged in, redirect to appropriate dashboard
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -238,7 +251,7 @@ export default function LandingPage() {
       {/* STATS */}
       <section id="chiffres" style={{ padding: '80px 40px', maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
-          {stats.map((s) => {
+          {statsData.map((s) => {
             const Icon = s.icon;
             return (
               <div key={s.label} className="stat-card">
@@ -329,6 +342,44 @@ export default function LandingPage() {
             >
               Accéder à mon espace <ArrowRight size={16} />
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* DISCIPLINE SECTION */}
+      <section style={{ padding: '80px 40px', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <div style={{ display: 'inline-block', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 99, padding: '5px 16px', marginBottom: 20 }}>
+            <span style={{ fontSize: 12, color: '#f87171', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Notre Vision</span>
+          </div>
+          <h2 style={{ fontSize: 42, fontWeight: 900, margin: '0 0 16px', letterSpacing: '-1.5px' }}>
+            La <span style={{ color: '#ef4444' }}>rigueur</span> dans la discipline
+          </h2>
+          <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.65)', maxWidth: 700, margin: '0 auto', lineHeight: 1.8 }}>
+            Nous croyons fermement qu'un encadrement strict et bienveillant est la clé du succès. Notre système de gestion des absences et du comportement garantit un suivi irréprochable et transparent, en parfaite collaboration avec les parents, pour assurer l'excellence de chaque élève.
+          </p>
+        </div>
+      </section>
+
+      {/* LOCALISATION SECTION */}
+      <section style={{ padding: '40px 40px 100px', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 24, padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center'
+        }}>
+          <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>Localisation</h2>
+          <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>Retrouvez-nous à <strong>Melen, Yaoundé</strong> au cœur de l'excellence académique.</p>
+          <div style={{ width: '100%', height: '400px', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <iframe 
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15923.32742918868!2d11.4886675!3d3.8644342!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x108bcfb5c0034a75%3A0xc00f40d86df4482c!2sMelen%2C%20Yaound%C3%A9%2C%20Cameroun!5e0!3m2!1sfr!2sfr!4v1690000000000!5m2!1sfr!2sfr" 
+              width="100%" 
+              height="100%" 
+              style={{ border: 0 }} 
+              allowFullScreen="" 
+              loading="lazy" 
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Carte Melen Yaoundé"
+            ></iframe>
           </div>
         </div>
       </section>

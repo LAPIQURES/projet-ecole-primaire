@@ -407,19 +407,33 @@ exports.sendMessage = async (req, res) => {
 
 exports.markConversationRead = async (req, res) => {
   try {
-    const { peerRole, peerId } = req.body;
-    if (!peerRole || !peerId) {
+    const { peerRole, peerId, role, identifier, messageIds } = req.body;
+    
+    // Approach 1: Mark specific message IDs as read
+    if (Array.isArray(messageIds) && messageIds.length > 0) {
+      await pool.query(
+        `UPDATE Messages SET isRead = 1, readAt = NOW() WHERE idMessages IN (?) AND isRead = 0`,
+        [messageIds]
+      );
+      return res.json({ message: 'Messages marqués comme lus' });
+    }
+    
+    // Approach 2: Mark by peer role/id
+    const actualPeerRole = peerRole || role;
+    const actualPeerId = peerId || identifier;
+    
+    if (!actualPeerRole || !actualPeerId) {
       return res.status(400).json({ error: 'Conversation à marquer requise' });
     }
 
-    const role = normalizeRole(req.user?.role);
-    const identifier = getUserKey(req.user);
+    const myRole = normalizeRole(req.user?.role);
+    const myIdentifier = getUserKey(req.user);
 
     await pool.query(
       `UPDATE Messages
        SET isRead = 1, readAt = NOW()
        WHERE receiverRole = ? AND receiverId = ? AND senderRole = ? AND senderId = ? AND isRead = 0`,
-      [role, identifier, normalizeRole(peerRole), String(peerId)]
+      [myRole, myIdentifier, normalizeRole(actualPeerRole), String(actualPeerId)]
     );
 
     res.json({ message: 'Conversation marquée comme lue' });

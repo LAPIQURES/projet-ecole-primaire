@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const statsController = require('../controllers/statsController');
 const { verifyAdmin, verifyToken } = require('../middleware/auth');
+// Public endpoints
+router.get('/public', statsController.getPublicStats);
 
 // Director endpoints (protected to directeur/admin/superadmin)
 router.get('/directeur', verifyAdmin(['directeur','admin','superadmin']), statsController.getDashboardStats);

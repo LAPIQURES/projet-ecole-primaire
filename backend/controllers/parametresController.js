@@ -19,7 +19,28 @@ ensurePaymentModes().catch((e) => console.error('Erreur ensurePaymentModes:', e.
 
 exports.getProfile = async (req, res) => {
   try {
-    res.json({ user: req.user });
+    const role = req.user?.role;
+    const identifier = req.user?.login || req.user?.username;
+    
+    // Admin, superadmin, directeur, intendant are all in Admin table
+    if (['admin', 'superadmin', 'directeur', 'intendant'].includes(role)) {
+      const [rows] = await pool.query('SELECT * FROM Admin WHERE username = ? LIMIT 1', [identifier]);
+      if (rows.length) {
+        const { password, pass, ...safe } = rows[0];
+        return res.json(safe);
+      }
+    }
+    
+    // Enseignant, parent are in Personne table
+    if (req.user.id) {
+      const [pers] = await pool.query('SELECT * FROM Personne WHERE idPers = ? LIMIT 1', [req.user.id]);
+      if (pers.length) {
+        const { password, pass, ...safe } = pers[0];
+        return res.json(safe);
+      }
+    }
+    
+    res.json(req.user); // fallback
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
