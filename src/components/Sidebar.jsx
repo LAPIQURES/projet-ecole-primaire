@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import API from '../services/api';
 import {
   LayoutDashboard, Users, BookOpen, UserCheck, Calendar,
   CreditCard, MessageSquare, LogOut, Settings,
@@ -145,6 +146,25 @@ const parentNavGroups = [
 export default function Sidebar({ collapsed, setCollapsed }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const res = await API.get('/messages/unread-count');
+        setUnreadCount(res.data.unread || 0);
+      } catch (e) {
+        console.error('Error fetching unread count:', e);
+      }
+    };
+    fetchUnread();
+    
+    // Optional: poll every minute
+    const interval = setInterval(fetchUnread, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const user = (() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}'); }
@@ -254,6 +274,24 @@ export default function Sidebar({ collapsed, setCollapsed }) {
                 >
                   <item.icon size={17} style={{ flexShrink: 0 }} />
                   {!collapsed && <span>{item.name}</span>}
+                  {!collapsed && item.name === 'Messages' && unreadCount > 0 && (
+                    <span style={{
+                      background: '#ef4444', color: '#fff', fontSize: '10px',
+                      padding: '2px 6px', borderRadius: '10px', fontWeight: 600,
+                      marginLeft: 'auto'
+                    }}>
+                      {unreadCount}
+                    </span>
+                  )}
+                  {collapsed && item.name === 'Messages' && unreadCount > 0 && (
+                    <span style={{
+                      position: 'absolute', top: 5, right: 10,
+                      background: '#ef4444', color: '#fff', fontSize: '8px',
+                      padding: '1px 4px', borderRadius: '10px', fontWeight: 600
+                    }}>
+                      {unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}

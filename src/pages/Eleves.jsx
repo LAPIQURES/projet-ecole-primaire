@@ -157,8 +157,9 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
           id: `#eval${ev.idEval || idx + 1}`,
           type: ev.session || 'Évaluation',
           subject: ev.cours || 'Cours',
+          note: ev.note != null ? `${ev.note}/20` : '—',
           grade: grade,
-          percent: `${Math.round((ev.note / 20) * 100)}%`,
+          percent: `${Math.round((Number(ev.note) / 20) * 100)}%`,
           date: ev.created_at ? new Date(ev.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
         };
       })
@@ -433,7 +434,7 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ borderBottom: '1.5px solid #edf2f7' }}>
-                    {['Id', 'Type', 'Matière', 'Grade', '%', 'Date'].map(h => (
+                    {['Id', 'Type', 'Matière', 'Note', 'Grade', '%', 'Date'].map(h => (
                       <th key={h} style={{ padding: '12px 8px', fontSize: '11px', fontWeight: '700', color: '#718096', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
                     ))}
                   </tr>
@@ -444,6 +445,7 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
                       <td style={{ padding: '14px 8px', fontSize: '13px', color: '#718096', fontWeight: '500' }}>{exam.id}</td>
                       <td style={{ padding: '14px 8px', fontSize: '13px', color: '#2d3748', fontWeight: '600' }}>{exam.type}</td>
                       <td style={{ padding: '14px 8px', fontSize: '13px', color: '#718096', fontWeight: '500' }}>{exam.subject}</td>
+                      <td style={{ padding: '14px 8px', fontSize: '13px', color: '#1f2937', fontWeight: '700' }}>{exam.note}</td>
                       <td style={{ padding: '14px 8px' }}>
                         <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', background: exam.grade.startsWith('A') ? '#ecfdf5' : '#eff6ff', color: exam.grade.startsWith('A') ? '#059669' : '#2563eb' }}>
                           {exam.grade}

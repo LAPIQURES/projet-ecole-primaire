@@ -22,6 +22,12 @@ const roleIcon = {
   parent: Mail,
 };
 
+const normalizeRoleForThread = (role) => {
+  if (!role) return '';
+  if (role === 'superadmin') return 'admin';
+  return role;
+};
+
 const getUserIdentity = () => {
   try {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -105,7 +111,7 @@ export default function Messages({ noLayout = false }) {
       setContacts(allContacts);
       setMessages(Array.isArray(messagesRes.data) ? messagesRes.data : []);
 
-      if (!selectedContact && normalizedContacts.length > 0) {
+      if (!selectedContact && allContacts.length > 0) {
         setSelectedContact(allContacts[0]);
       }
       try {
@@ -180,12 +186,16 @@ export default function Messages({ noLayout = false }) {
   const threadMessages = useMemo(() => {
     if (!selectedContact) return [];
     if (selectedContact.role === 'group') return groupMessages;
+    const normalizedSelectedRole = normalizeRoleForThread(selectedContact.role);
+    const normalizedMeRole = normalizeRoleForThread(me.role);
     return messages
       .filter((message) => {
-        const senderMatch = message.senderRole === selectedContact.role && String(message.senderId) === String(selectedContact.identifier);
-        const receiverMatch = message.receiverRole === selectedContact.role && String(message.receiverId) === String(selectedContact.identifier);
-        const meSender = message.senderRole === me.role && String(message.senderId) === String(me.identifier);
-        const meReceiver = message.receiverRole === me.role && String(message.receiverId) === String(me.identifier);
+        const senderRole = normalizeRoleForThread(message.senderRole);
+        const receiverRole = normalizeRoleForThread(message.receiverRole);
+        const senderMatch = senderRole === normalizedSelectedRole && String(message.senderId) === String(selectedContact.identifier);
+        const receiverMatch = receiverRole === normalizedSelectedRole && String(message.receiverId) === String(selectedContact.identifier);
+        const meSender = senderRole === normalizedMeRole && String(message.senderId) === String(me.identifier);
+        const meReceiver = receiverRole === normalizedMeRole && String(message.receiverId) === String(me.identifier);
         return (senderMatch && meReceiver) || (receiverMatch && meSender);
       })
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -228,6 +238,34 @@ export default function Messages({ noLayout = false }) {
       setContent('');
       setSubject('');
       setSuccess('Message envoyé');
+      if (selectedContact.role === 'group') {
+        const gid = String(selectedContact.identifier).replace('group-', '');
+        const newMessage = {
+          id: Date.now(),
+          groupId: gid,
+          senderRole: me.role,
+          senderId: me.identifier,
+          senderLabel: me.label,
+          content: content.trim(),
+          created_at: new Date().toISOString(),
+        };
+        setGroupMessages((prev) => [...prev, newMessage]);
+      } else {
+        const newMessage = {
+          idMessage: Date.now(),
+          senderRole: me.role,
+          senderId: me.identifier,
+          senderLabel: me.label,
+          receiverRole: selectedContact.role,
+          receiverId: selectedContact.identifier,
+          receiverLabel: selectedContact.label,
+          subject: subject.trim(),
+          content: content.trim(),
+          isRead: 0,
+          created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [newMessage, ...prev]);
+      }
       await loadAll();
       setTimeout(() => setSuccess(''), 1800);
     } catch (err) {

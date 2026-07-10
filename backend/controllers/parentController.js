@@ -35,7 +35,7 @@ exports.getParentById = async (req, res) => {
     const parent = rows[0];
     
     const [children] = await pool.query(`
-      SELECT e.matricule, e.nom, e.prenom, e.photoURL, e.dateNaissance,
+      SELECT DISTINCT e.matricule, e.nom, e.prenom, e.photoURL, e.dateNaissance,
         s.libelle AS salle, s.idSalle, c.libelle AS classe, c.idClasse, cy.libelle AS cycle
       FROM ParentEleve pe
       JOIN Eleve e ON e.matricule = pe.matricule
@@ -45,8 +45,17 @@ exports.getParentById = async (req, res) => {
       LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
       WHERE pe.idPers = ?
       ORDER BY e.nom, e.prenom`, [parent.idPers]);
-    
-    res.json({ ...parent, children, nbEnfants: children.length });
+
+    const uniqueChildren = [];
+    const seenMatricules = new Set();
+    for (const child of children) {
+      if (!seenMatricules.has(child.matricule)) {
+        seenMatricules.add(child.matricule);
+        uniqueChildren.push(child);
+      }
+    }
+
+    res.json({ ...parent, children: uniqueChildren, nbEnfants: uniqueChildren.length });
   } catch (error) { res.status(500).json({ error: error.message }); }
 };
 

@@ -29,11 +29,11 @@ router.get('/me/courses', verifyEnseignant, async (req, res) => {
   try {
     const filter = buildTeacherFilter(req);
     const [courses] = await pool.query(
-      `SELECT DISTINCT
+      `SELECT 
         c.idCours, c.libelle AS libelleCours, c.heures,
         cl.idClasse, cl.libelle AS classe,
         s.idSalle, s.libelle AS libelleSalle,
-        e.heure, e.jour,
+        MIN(e.heure) AS heure, MAX(e.heure) AS fin_heure,
         COALESCE(COUNT(DISTINCT f.matricule), 0) AS nbEleves
        FROM Cours c
        LEFT JOIN Classe cl ON cl.idClasse = c.idClasse
@@ -41,8 +41,8 @@ router.get('/me/courses', verifyEnseignant, async (req, res) => {
        LEFT JOIN EmploiDuTemps e ON e.idCours = c.idCours
        LEFT JOIN Frequente f ON f.idSalle = s.idSalle
        ${filter.clause}
-       GROUP BY c.idCours, cl.idClasse, s.idSalle, e.jour, e.heure
-       ORDER BY cl.libelle, e.heure`,
+       GROUP BY c.idCours, c.libelle, c.heures, cl.idClasse, cl.libelle, s.idSalle, s.libelle
+       ORDER BY cl.libelle, c.libelle`,
       filter.params
     );
     res.json(courses || []);

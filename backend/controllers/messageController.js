@@ -442,3 +442,14 @@ exports.markConversationRead = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const role = normalizeRole(req.user?.role);
+    const identifier = getUserKey(req.user);
+    const [rows] = await pool.query('SELECT COUNT(*) as count FROM Messages WHERE receiverRole = ? AND receiverId = ? AND isRead = 0', [role, identifier]);
+    res.json({ unread: rows[0].count });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

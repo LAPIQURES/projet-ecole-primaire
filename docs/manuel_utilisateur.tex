@@ -1,0 +1,1647 @@
+% ============================================================================
+%  MANUEL UTILISATEUR — EcoleGest v5.0
+%  Application de Gestion Scolaire Intégrée
+%  Melen, Yaoundé — Cameroun
+% ============================================================================
+\documentclass[12pt, a4paper, twoside, openright]{report}
+
+% ─── ENCODAGE & LANGUE ──────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+
+% ─── MISE EN PAGE ────────────────────────────────────────────────────────────
+\usepackage[
+  top=2.5cm, bottom=2.5cm,
+  left=2.8cm, right=2.2cm,
+  headheight=15pt
+]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% ─── POLICES ─────────────────────────────────────────────────────────────────
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% ─── GRAPHIQUES & COULEURS ───────────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage[dvipsnames, svgnames, x11names, table]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{shadows, calc, positioning, arrows.meta}
+
+% ─── TABLEAUX ────────────────────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{colortbl}
+
+% ─── LISTES ──────────────────────────────────────────────────────────────────
+\usepackage{enumitem}
+
+% ─── EN-TÊTES & PIEDS DE PAGE ───────────────────────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\small\textit{\leftmark}}
+\fancyhead[RO]{\small\textit{\rightmark}}
+\fancyfoot[C]{\thepage}
+\fancyfoot[LE,RO]{\small\textcolor{gray}{EcoleGest — Manuel Utilisateur v5.0}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.2pt}
+
+% ─── HYPERLIENS ──────────────────────────────────────────────────────────────
+\usepackage[
+  colorlinks=true,
+  linkcolor=NavyBlue,
+  urlcolor=RoyalBlue,
+  citecolor=ForestGreen,
+  bookmarks=true,
+  bookmarksopen=true,
+  pdfauthor={Direction Technique — EcoleGest},
+  pdftitle={Manuel Utilisateur EcoleGest v5.0},
+  pdfsubject={Guide complet d'utilisation},
+  pdfkeywords={école, gestion, scolaire, EcoleGest, Cameroun}
+]{hyperref}
+\usepackage{bookmark}
+
+% ─── BOÎTES COLORÉES (tips, warnings, notes…) ───────────────────────────────
+\usepackage[most]{tcolorbox}
+
+% ─── ICÔNES ──────────────────────────────────────────────────────────────────
+\usepackage{fontawesome5}
+
+% ─── LISTINGS CODE ───────────────────────────────────────────────────────────
+\usepackage{listings}
+
+% ============================================================================
+%  COULEURS PERSONNALISÉES (palette EcoleGest)
+% ============================================================================
+\definecolor{brandBlue}{HTML}{0062FF}
+\definecolor{brandOrange}{HTML}{FFA000}
+\definecolor{bgLight}{HTML}{F8FAFC}
+\definecolor{bgDark}{HTML}{0F172A}
+\definecolor{success}{HTML}{059669}
+\definecolor{danger}{HTML}{DC2626}
+\definecolor{warning}{HTML}{D97706}
+\definecolor{info}{HTML}{0EA5E9}
+\definecolor{grayMedium}{HTML}{64748B}
+\definecolor{grayLight}{HTML}{E2E8F0}
+
+% ============================================================================
+%  BOÎTES PERSONNALISÉES
+% ============================================================================
+
+% ── Astuce ───────────────────────────────────────────────────────────────────
+\newtcolorbox{astuce}[1][]{
+  enhanced, breakable,
+  colback=success!5, colframe=success!80!black,
+  fonttitle=\bfseries\color{white},
+  title={\faLightbulb\quad Astuce},
+  attach boxed title to top left={yshift=-2mm, xshift=4mm},
+  boxed title style={colback=success!80!black, rounded corners},
+  rounded corners, arc=3mm,
+  left=4mm, right=4mm, top=6mm, bottom=4mm,
+  #1
+}
+
+% ── Attention ────────────────────────────────────────────────────────────────
+\newtcolorbox{attention}[1][]{
+  enhanced, breakable,
+  colback=danger!5, colframe=danger!80!black,
+  fonttitle=\bfseries\color{white},
+  title={\faExclamationTriangle\quad Attention},
+  attach boxed title to top left={yshift=-2mm, xshift=4mm},
+  boxed title style={colback=danger!80!black, rounded corners},
+  rounded corners, arc=3mm,
+  left=4mm, right=4mm, top=6mm, bottom=4mm,
+  #1
+}
+
+% ── Note ─────────────────────────────────────────────────────────────────────
+\newtcolorbox{note}[1][]{
+  enhanced, breakable,
+  colback=info!5, colframe=info!80!black,
+  fonttitle=\bfseries\color{white},
+  title={\faInfoCircle\quad Note},
+  attach boxed title to top left={yshift=-2mm, xshift=4mm},
+  boxed title style={colback=info!80!black, rounded corners},
+  rounded corners, arc=3mm,
+  left=4mm, right=4mm, top=6mm, bottom=4mm,
+  #1
+}
+
+% ── Étape (pour les procédures pas-à-pas) ────────────────────────────────────
+\newtcolorbox{etape}[1][]{
+  enhanced, breakable,
+  colback=brandBlue!3, colframe=brandBlue!60!black,
+  fonttitle=\bfseries\color{white},
+  title={#1},
+  attach boxed title to top left={yshift=-2mm, xshift=4mm},
+  boxed title style={colback=brandBlue!60!black, rounded corners},
+  rounded corners, arc=2mm,
+  left=4mm, right=4mm, top=6mm, bottom=4mm,
+}
+
+% ============================================================================
+%  COMMANDE POUR LES CAPTURES D'ÉCRAN
+% ============================================================================
+% Utilisation: \screenshot{nom_fichier}{Légende descriptive}
+% Le fichier doit se trouver dans le dossier screenshots/
+% Si l'image n'existe pas encore, une boîte placeholder s'affiche.
+\newcommand{\screenshot}[2]{%
+  \begin{figure}[htbp]
+    \centering
+    \IfFileExists{screenshots/#1}{%
+      \includegraphics[width=0.92\textwidth, keepaspectratio]{screenshots/#1}%
+    }{%
+      \begin{tcolorbox}[
+        enhanced, width=0.92\textwidth,
+        height=7cm, valign=center,
+        colback=bgLight, colframe=grayLight,
+        fontupper=\centering\color{grayMedium}\large,
+        rounded corners, arc=4mm,
+        shadow={2mm}{-2mm}{0mm}{black!15}
+      ]
+        \faCamera\quad\textbf{Capture d'écran}\\[6pt]
+        \normalsize\texttt{screenshots/\detokenize{#1}}\\[4pt]
+        \small\textit{#2}
+      \end{tcolorbox}%
+    }%
+    \caption{#2}
+    \label{fig:#1}
+  \end{figure}
+}
+
+% Variante pleine page
+\newcommand{\screenshotfull}[2]{%
+  \begin{figure}[p]
+    \centering
+    \IfFileExists{screenshots/#1}{%
+      \includegraphics[width=\textwidth, keepaspectratio]{screenshots/#1}%
+    }{%
+      \begin{tcolorbox}[
+        enhanced, width=\textwidth,
+        height=12cm, valign=center,
+        colback=bgLight, colframe=grayLight,
+        fontupper=\centering\color{grayMedium}\Large,
+        rounded corners, arc=4mm,
+        shadow={2mm}{-2mm}{0mm}{black!15}
+      ]
+        \faDesktop\quad\textbf{Capture d'écran — Pleine page}\\[8pt]
+        \large\texttt{screenshots/\detokenize{#1}}\\[6pt]
+        \normalsize\textit{#2}
+      \end{tcolorbox}%
+    }%
+    \caption{#2}
+    \label{fig:#1}
+  \end{figure}
+}
+
+% ============================================================================
+%  COMMANDES UTILITAIRES
+% ============================================================================
+\newcommand{\menu}[1]{\textbf{\textcolor{brandBlue}{\faChevronRight~#1}}}
+\newcommand{\bouton}[1]{\tikz[baseline=(X.base)]{\node[fill=brandBlue, text=white, rounded corners=3pt, inner sep=3pt, font=\small\bfseries] (X) {#1};}}
+\newcommand{\boutonvert}[1]{\tikz[baseline=(X.base)]{\node[fill=success, text=white, rounded corners=3pt, inner sep=3pt, font=\small\bfseries] (X) {#1};}}
+\newcommand{\boutonrouge}[1]{\tikz[baseline=(X.base)]{\node[fill=danger, text=white, rounded corners=3pt, inner sep=3pt, font=\small\bfseries] (X) {#1};}}
+\newcommand{\champ}[1]{\texttt{\textcolor{bgDark}{#1}}}
+\newcommand{\role}[1]{\textsc{\textcolor{brandOrange}{#1}}}
+
+% Numérotation des chapitres plus propre
+\renewcommand{\thechapter}{\arabic{chapter}}
+
+% ============================================================================
+%                         DÉBUT DU DOCUMENT
+% ============================================================================
+\begin{document}
+
+% ============================================================================
+%  PAGE DE COUVERTURE
+% ============================================================================
+\begin{titlepage}
+  \begin{tikzpicture}[remember picture, overlay]
+    % Fond dégradé
+    \fill[brandBlue] (current page.south west) rectangle (current page.north east);
+    \fill[brandOrange, opacity=0.15] (current page.south west) rectangle ([yshift=8cm]current page.east);
+    
+    % Motifs décoratifs
+    \foreach \i in {1,...,20}{
+      \fill[white, opacity=0.03] (rand*21, rand*29.7) circle (rand*2+0.5);
+    }
+    
+    % Bande latérale
+    \fill[brandOrange] ([xshift=-2mm]current page.north east) rectangle ([xshift=2mm]current page.south east);
+    
+    % Logo / Icône
+    \node[circle, fill=white, minimum size=3cm, inner sep=0pt,
+          drop shadow={shadow xshift=2mm, shadow yshift=-2mm, color=black!30}] 
+      at ([yshift=-5cm]current page.north) {
+        \IfFileExists{screenshots/logo.png}{%
+          \includegraphics[width=2cm]{screenshots/logo.png}%
+        }{%
+          {\Huge\textcolor{brandBlue}{\faGraduationCap}}%
+        }
+      };
+  \end{tikzpicture}
+  
+  \vspace*{6.5cm}
+  \begin{center}
+    {\fontsize{42}{48}\selectfont\bfseries\textcolor{white}{EcoleGest}}\\[8pt]
+    {\Large\textcolor{white!85}{Application de Gestion Scolaire Intégrée}}\\[30pt]
+    
+    \rule{8cm}{1.5pt}\\[20pt]
+    
+    {\fontsize{22}{26}\selectfont\textcolor{brandOrange}{\textbf{MANUEL UTILISATEUR}}}\\[8pt]
+    {\large\textcolor{white!80}{Guide Complet d'Utilisation — Version 5.0}}\\[40pt]
+    
+    \begin{tabular}{rl}
+      \textcolor{white!70}{\faCalendarAlt} & \textcolor{white}{Juillet 2026}\\[4pt]
+      \textcolor{white!70}{\faMapMarkerAlt} & \textcolor{white}{Melen, Yaoundé — Cameroun}\\[4pt]
+      \textcolor{white!70}{\faFileAlt} & \textcolor{white}{Document confidentiel}\\
+    \end{tabular}
+  \end{center}
+  
+  \vfill
+  \begin{center}
+    \textcolor{white!50}{\small\textcopyright{} 2026 EcoleGest. Tous droits réservés.}
+  \end{center}
+\end{titlepage}
+
+% ============================================================================
+%  PAGE DE GARDE INTÉRIEURE
+% ============================================================================
+\thispagestyle{empty}
+\vspace*{3cm}
+\begin{center}
+  {\LARGE\textbf{EcoleGest — Manuel Utilisateur}}\\[10pt]
+  {\large Version 5.0 — Juillet 2026}\\[30pt]
+  
+  \begin{tabularx}{0.75\textwidth}{lX}
+    \toprule
+    \textbf{Propriété} & \textbf{Valeur} \\
+    \midrule
+    Titre & Manuel Utilisateur EcoleGest \\
+    Version du document & 5.0 \\
+    Version logiciel & 5.0 \\
+    Date de publication & Juillet 2026 \\
+    Classification & Confidentiel — Usage interne \\
+    Auteur & Direction Technique \\
+    Établissement & Complexe Scolaire EcoleGest \\
+    Localisation & Melen, Yaoundé, Cameroun \\
+    Contact support & support@ecolegest.cm \\
+    \bottomrule
+  \end{tabularx}
+\end{center}
+
+\vfill
+
+\begin{tcolorbox}[colback=info!5, colframe=info, rounded corners, arc=3mm]
+  \small
+  \textbf{Historique des révisions}\\[6pt]
+  \begin{tabularx}{\textwidth}{llXl}
+    \textbf{Version} & \textbf{Date} & \textbf{Modifications} & \textbf{Auteur} \\
+    \hline
+    1.0 & Janvier 2026 & Création initiale & Équipe technique \\
+    2.0 & Mars 2026 & Ajout modules enseignant/parent & Équipe technique \\
+    3.0 & Mai 2026 & Module paiements et bulletins & Équipe technique \\
+    4.0 & Juin 2026 & Messagerie et discipline & Équipe technique \\
+    5.0 & Juillet 2026 & Version complète avec notifications & Équipe technique \\
+  \end{tabularx}
+\end{tcolorbox}
+
+\clearpage
+
+% ============================================================================
+%  TABLE DES MATIÈRES
+% ============================================================================
+\tableofcontents
+\clearpage
+
+\listoffigures
+\clearpage
+
+% ============================================================================
+%  CHAPITRE 1 : PRÉSENTATION GÉNÉRALE
+% ============================================================================
+\chapter{Présentation Générale}
+\label{chap:presentation}
+
+\section{Qu'est-ce que EcoleGest~?}
+
+\textbf{EcoleGest} est une application web de gestion scolaire intégrée, conçue pour simplifier et automatiser l'ensemble des processus administratifs, pédagogiques et financiers d'un établissement scolaire.
+
+L'application est accessible depuis n'importe quel navigateur web (Google Chrome, Mozilla Firefox, Microsoft Edge, Safari) sur ordinateur, tablette ou téléphone.
+
+\begin{note}
+  Aucune installation n'est nécessaire sur votre appareil. Il suffit d'ouvrir votre navigateur et de saisir l'adresse de l'application.
+\end{note}
+
+\section{Les acteurs de l'application}
+
+EcoleGest est conçue pour \textbf{cinq types d'utilisateurs} (appelés « acteurs »). Chaque acteur dispose de son propre espace avec des fonctionnalités adaptées à son rôle.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Les acteurs de EcoleGest et leurs responsabilités}
+  \label{tab:acteurs}
+  \rowcolors{2}{bgLight}{white}
+  \begin{tabularx}{\textwidth}{>{\bfseries}l X l}
+    \toprule
+    \textbf{Acteur} & \textbf{Responsabilités principales} & \textbf{Icône} \\
+    \midrule
+    Administrateur & 
+      Gestion complète de l'école : élèves, enseignants, classes, cours, emploi du temps, bulletins, discipline, bus scolaire, personnel & 
+      \faUserShield \\
+    Directeur & 
+      Supervision académique et financière, consultation des rapports, suivi des paiements, validation des bulletins & 
+      \faUserTie \\
+    Intendant & 
+      Gestion financière : paiements, tranches de scolarité, suivi des impayés, inscriptions & 
+      \faMoneyBillWave \\
+    Enseignant & 
+      Gestion pédagogique : emploi du temps personnel, saisie des notes, évaluations, cahier d'appel, communication & 
+      \faChalkboardTeacher \\
+    Parent & 
+      Suivi de l'enfant : résultats scolaires, paiements, bulletins, communication avec l'école & 
+      \faUsers \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Schéma général de l'application}
+
+La figure ci-dessous présente une vue d'ensemble des modules de l'application et les acteurs qui y ont accès.
+
+\screenshot{schema_general.png}{Vue d'ensemble des modules EcoleGest et des acteurs}
+
+\section{Configuration requise}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Configuration minimale requise}
+  \begin{tabularx}{\textwidth}{lX}
+    \toprule
+    \textbf{Élément} & \textbf{Exigence} \\
+    \midrule
+    Navigateur web & Google Chrome 90+, Firefox 88+, Edge 90+, Safari 14+ \\
+    Connexion internet & Minimum 1 Mbps (recommandé : 5 Mbps) \\
+    Écran & Résolution minimale 1024×768 pixels \\
+    Système & Windows 10+, macOS 11+, Android 10+, iOS 14+ \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+
+% ============================================================================
+%  CHAPITRE 2 : PRISE EN MAIN — CONNEXION
+% ============================================================================
+\chapter{Prise en Main}
+\label{chap:prise_en_main}
+
+\section{Accéder à l'application}
+
+\begin{etape}{\faStepForward\quad Étape 1 — Ouvrir le navigateur}
+  Ouvrez votre navigateur web préféré (Google Chrome est recommandé).\\[4pt]
+  Dans la \textbf{barre d'adresse} (en haut du navigateur), tapez l'adresse de l'application :
+  
+  \begin{center}
+    \Large\texttt{http://ecolegest.cm}
+  \end{center}
+  
+  Puis appuyez sur la touche \textbf{Entrée} de votre clavier.
+\end{etape}
+
+\screenshot{landing_page.png}{Page d'accueil de EcoleGest — Page publique visible par tous}
+
+\begin{note}
+  La page d'accueil présente l'établissement, ses statistiques (nombre d'élèves, enseignants, classes), la localisation à Melen (Yaoundé) et les valeurs de rigueur et discipline.
+\end{note}
+
+\section{Se connecter à son compte}
+
+Chaque utilisateur possède un \textbf{nom d'utilisateur} (identifiant) et un \textbf{mot de passe} qui lui sont attribués par l'administrateur de l'école.
+
+\begin{etape}{\faStepForward\quad Étape 1 — Accéder à la page de connexion}
+  Sur la page d'accueil, cliquez sur le bouton \bouton{Se Connecter} en haut à droite de l'écran.
+\end{etape}
+
+\screenshot{login_page.png}{Page de connexion — Saisie des identifiants}
+
+\begin{etape}{\faStepForward\quad Étape 2 — Saisir ses identifiants}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le champ \champ{Nom d'utilisateur}, tapez votre identifiant
+    \item Dans le champ \champ{Mot de passe}, tapez votre mot de passe
+    \item Cliquez sur le bouton \bouton{Connexion}
+  \end{enumerate}
+\end{etape}
+
+\begin{attention}
+  \begin{itemize}
+    \item Votre mot de passe est \textbf{sensible aux majuscules/minuscules}. Vérifiez que la touche « Verr. Maj » (Caps Lock) de votre clavier est bien désactivée.
+    \item \textbf{Ne partagez jamais} votre mot de passe avec une autre personne.
+    \item Après 5 tentatives échouées, votre compte peut être temporairement bloqué. Contactez l'administrateur.
+  \end{itemize}
+\end{attention}
+
+\begin{etape}{\faStepForward\quad Étape 3 — Vous êtes connecté !}
+  Après une connexion réussie, vous serez automatiquement redirigé vers votre \textbf{tableau de bord} correspondant à votre rôle.
+\end{etape}
+
+\screenshot{login_success.png}{Redirection automatique vers le tableau de bord après connexion}
+
+\section{Se déconnecter}
+
+\begin{etape}{\faStepForward\quad Déconnexion}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Regardez le \textbf{menu latéral gauche} (la barre bleue et orange sur le côté)
+    \item En bas de ce menu, vous verrez votre nom et un bouton \boutonrouge{Déconnexion}
+    \item Cliquez sur \boutonrouge{Déconnexion}
+    \item Vous serez redirigé vers la page de connexion
+  \end{enumerate}
+\end{etape}
+
+\screenshot{sidebar_deconnexion.png}{Bouton de déconnexion dans le menu latéral}
+
+\begin{astuce}
+  Pensez toujours à vous déconnecter lorsque vous quittez votre poste, surtout si vous utilisez un ordinateur partagé.
+\end{astuce}
+
+\section{Comprendre l'interface}
+
+L'interface de EcoleGest se compose de trois zones principales :
+
+\begin{enumerate}[label=\textbf{\Alph*.}]
+  \item \textbf{Le menu latéral (Sidebar)} — À gauche, contient tous les liens de navigation vers les différentes sections. Vous pouvez le réduire en cliquant sur la flèche.
+  \item \textbf{La zone de contenu} — Au centre, affiche la page actuellement sélectionnée.
+  \item \textbf{Les notifications} — Le badge rouge à côté de « Messages » indique le nombre de messages non lus.
+\end{enumerate}
+
+\screenshot{interface_zones.png}{Les trois zones de l'interface EcoleGest}
+
+
+% ============================================================================
+%  CHAPITRE 3 : ESPACE ADMINISTRATEUR
+% ============================================================================
+\chapter{Espace Administrateur}
+\label{chap:admin}
+
+L'administrateur est le \textbf{super-utilisateur} de l'application. Il a accès à toutes les fonctionnalités et est responsable de la configuration et de la gestion quotidienne de l'école.
+
+\section{Tableau de bord}
+
+Le tableau de bord administrateur affiche en un coup d'œil les indicateurs clés de l'établissement.
+
+\screenshot{admin_dashboard.png}{Tableau de bord Administrateur — Vue d'ensemble}
+
+\subsection*{Indicateurs affichés}
+\begin{itemize}[label=\textcolor{brandBlue}{\faChartBar}]
+  \item Nombre total d'élèves inscrits
+  \item Nombre d'enseignants actifs
+  \item Nombre de classes et salles
+  \item Montant total des paiements reçus
+  \item Graphiques de fréquentation et performance
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Gestion des Élèves}
+\label{sec:admin_eleves}
+
+\subsection{Consulter la liste des élèves}
+
+\begin{etape}{\faStepForward\quad Accéder à la liste}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu latéral, cliquez sur \menu{Élèves}
+    \item La liste de tous les élèves inscrits s'affiche dans un tableau
+    \item Utilisez la \textbf{barre de recherche} en haut pour filtrer par nom ou matricule
+    \item Utilisez le filtre \textbf{Classe} pour voir les élèves d'une classe spécifique
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_eleves_liste.png}{Liste des élèves — Vue tableau avec recherche et filtres}
+
+\subsection{Ajouter un nouvel élève}
+
+\begin{etape}{\faStepForward\quad Procédure d'ajout}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur le bouton \boutonvert{+ Ajouter un élève} en haut à droite
+    \item Un formulaire apparaît — remplissez tous les champs marqués d'un astérisque (\textcolor{danger}{*}) :
+      \begin{itemize}
+        \item \champ{Nom} — Le nom de famille de l'élève
+        \item \champ{Prénom} — Le ou les prénoms de l'élève
+        \item \champ{Date de naissance} — Au format JJ/MM/AAAA
+        \item \champ{Lieu de naissance} — La ville de naissance
+        \item \champ{Sexe} — Masculin ou Féminin
+        \item \champ{Classe} — Sélectionnez la classe dans la liste déroulante
+      \end{itemize}
+    \item Cliquez sur \bouton{Enregistrer}
+    \item Un message de confirmation apparaît : « Élève ajouté avec succès »
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_eleves_ajout.png}{Formulaire d'ajout d'un nouvel élève}
+
+\subsection{Modifier les informations d'un élève}
+
+\begin{etape}{\faStepForward\quad Modification}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans la liste des élèves, trouvez l'élève concerné
+    \item Cliquez sur l'icône \textcolor{brandBlue}{\faPencilAlt} (crayon) dans la colonne « Actions »
+    \item Modifiez les champs souhaités
+    \item Cliquez sur \bouton{Enregistrer}
+  \end{enumerate}
+\end{etape}
+
+\subsection{Supprimer un élève}
+
+\begin{attention}
+  La suppression d'un élève est une action \textbf{irréversible}. Elle supprime également l'ensemble de ses évaluations, bulletins et paiements.
+\end{attention}
+
+\begin{etape}{\faStepForward\quad Suppression}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans la liste des élèves, trouvez l'élève concerné
+    \item Cliquez sur l'icône \textcolor{danger}{\faTrash} (poubelle) dans la colonne « Actions »
+    \item Une fenêtre de confirmation apparaît : « Êtes-vous sûr de vouloir supprimer cet élève~? »
+    \item Cliquez sur \boutonrouge{Confirmer} pour supprimer, ou \bouton{Annuler} pour revenir
+  \end{enumerate}
+\end{etape}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Gestion des Enseignants}
+\label{sec:admin_enseignants}
+
+\subsection{Consulter la liste des enseignants}
+
+\begin{etape}{\faStepForward\quad Accéder à la liste}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu latéral, cliquez sur \menu{Enseignants}
+    \item La liste affiche : nom, prénom, matière enseignée, nombre de classes, statut (actif/inactif)
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_enseignants_liste.png}{Liste des enseignants avec statistiques}
+
+\subsection{Ajouter un enseignant}
+
+\begin{etape}{\faStepForward\quad Procédure d'ajout}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \boutonvert{+ Ajouter un enseignant}
+    \item Remplissez le formulaire :
+      \begin{itemize}
+        \item \champ{Nom} et \champ{Prénom}
+        \item \champ{Téléphone} — Numéro de téléphone mobile
+        \item \champ{Nom d'utilisateur} — Sera utilisé pour la connexion (généré automatiquement si vide)
+        \item \champ{Mot de passe} — Par défaut : \texttt{1234}
+        \item \champ{Matière} — Sélectionnez le cours principal dans la liste
+      \end{itemize}
+    \item Cliquez sur \bouton{Enregistrer}
+    \item \textbf{Important} : Communiquez les identifiants de connexion à l'enseignant
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_enseignants_ajout.png}{Formulaire d'ajout d'un enseignant}
+
+\begin{astuce}
+  Le nom d'utilisateur est généré automatiquement au format \texttt{prenom.nom}. Exemple : pour « Jean Dupont », le nom d'utilisateur sera \texttt{jean.dupont}.
+\end{astuce}
+
+\subsection{Affecter un enseignant à une classe/salle}
+
+\begin{etape}{\faStepForward\quad Affectation}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur le nom de l'enseignant pour ouvrir sa fiche détaillée
+    \item Cliquez sur \bouton{Affecter}
+    \item Sélectionnez la \textbf{salle} et/ou le \textbf{cours} à attribuer
+    \item Cliquez sur \bouton{Confirmer}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_enseignants_affectation.png}{Affectation d'un enseignant à une classe}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Gestion des Classes et Salles}
+\label{sec:admin_classes}
+
+\subsection{Classes}
+
+\begin{etape}{\faStepForward\quad Gérer les classes}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Classes \& Salles}
+    \item L'onglet \textbf{Classes} affiche toutes les classes avec le nombre d'élèves et le cycle
+    \item Pour ajouter une classe, cliquez sur \boutonvert{+ Nouvelle classe}
+    \item Renseignez le \champ{Libellé} (ex: « SIL », « CP », « CE1 ») et le \champ{Cycle}
+    \item Cliquez sur \bouton{Enregistrer}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_classes.png}{Gestion des classes — Liste et création}
+
+\subsection{Salles}
+
+\begin{etape}{\faStepForward\quad Gérer les salles}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Salles}
+    \item La liste des salles s'affiche avec la capacité et la classe associée
+    \item Pour ajouter une salle, cliquez sur \boutonvert{+ Nouvelle salle}
+    \item Renseignez le \champ{Nom de la salle}, la \champ{Capacité} et la \champ{Classe} associée
+    \item Cliquez sur \bouton{Enregistrer}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_salles.png}{Gestion des salles de classe}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Inscriptions}
+\label{sec:admin_inscriptions}
+
+\begin{etape}{\faStepForward\quad Inscrire un élève}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Inscriptions}
+    \item Cliquez sur \boutonvert{+ Nouvelle inscription}
+    \item Sélectionnez l'\textbf{élève} dans la liste déroulante (ou créez-en un nouveau)
+    \item Sélectionnez la \textbf{classe} et la \textbf{salle}
+    \item Sélectionnez l'\textbf{année académique}
+    \item Cliquez sur \bouton{Inscrire}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_inscriptions.png}{Module d'inscription — Formulaire et liste}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Cours et Évaluations}
+\label{sec:admin_cours}
+
+\subsection{Gérer les cours (matières)}
+
+\begin{etape}{\faStepForward\quad Ajouter un cours}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Cours \& Évaluations}
+    \item L'onglet \textbf{Cours} affiche les matières existantes
+    \item Cliquez sur \boutonvert{+ Nouveau cours}
+    \item Remplissez :
+      \begin{itemize}
+        \item \champ{Libellé} — Nom de la matière (ex: « Mathématiques », « Français »)
+        \item \champ{Classe} — La classe concernée
+        \item \champ{Enseignant} — L'enseignant responsable
+        \item \champ{Volume horaire} — Nombre d'heures par semaine
+        \item \champ{Coefficient} — Le coefficient de la matière
+      \end{itemize}
+    \item Cliquez sur \bouton{Enregistrer}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_cours.png}{Gestion des cours et matières}
+
+\subsection{Programme d'évaluation}
+
+\begin{etape}{\faStepForward\quad Créer une évaluation}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans l'onglet \textbf{Évaluations}, cliquez sur \boutonvert{+ Nouvelle évaluation}
+    \item Sélectionnez le \champ{Cours}, la \champ{Classe}, le \champ{Trimestre}
+    \item Indiquez le \champ{Type} (Devoir, Examen, Interrogation)
+    \item Indiquez la \champ{Date} et le \champ{Barème} (note sur 20, sur 10, etc.)
+    \item Cliquez sur \bouton{Créer}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_evaluations.png}{Création d'une évaluation}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Emploi du Temps}
+\label{sec:admin_emploi}
+
+\begin{etape}{\faStepForward\quad Configurer l'emploi du temps}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Emploi du temps}
+    \item La grille horaire s'affiche avec les jours en colonnes et les heures en lignes
+    \item Pour ajouter un créneau :
+      \begin{itemize}
+        \item Cliquez sur la case vide correspondant au jour et à l'heure souhaités
+        \item Sélectionnez le \champ{Cours}, la \champ{Classe} et la \champ{Salle}
+        \item Cliquez sur \bouton{Ajouter}
+      \end{itemize}
+    \item Le créneau apparaît dans la grille avec un code couleur
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_emploi_temps.png}{Emploi du temps — Grille hebdomadaire}
+
+\begin{astuce}
+  Utilisez le filtre \textbf{Classe} en haut de la page pour afficher l'emploi du temps d'une classe spécifique.
+\end{astuce}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Gestion des Parents}
+\label{sec:admin_parents}
+
+\begin{etape}{\faStepForward\quad Ajouter un parent}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Parents}
+    \item Cliquez sur \boutonvert{+ Ajouter un parent}
+    \item Remplissez le formulaire :
+      \begin{itemize}
+        \item \champ{Nom} et \champ{Prénom} du parent
+        \item \champ{Téléphone} et \champ{Email}
+        \item \champ{Profession}
+        \item \champ{Adresse}
+        \item \champ{Enfant(s)} — Sélectionnez le ou les élèves liés à ce parent
+      \end{itemize}
+    \item Cliquez sur \bouton{Enregistrer}
+    \item Le parent recevra ses identifiants de connexion
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_parents.png}{Gestion des parents — Liste et ajout}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Paiements}
+\label{sec:admin_paiements}
+
+\begin{etape}{\faStepForward\quad Enregistrer un paiement}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Paiements}
+    \item La page affiche les statistiques de paiement et la liste des paiements effectués
+    \item Cliquez sur \boutonvert{+ Nouveau paiement}
+    \item Remplissez :
+      \begin{itemize}
+        \item \champ{Élève} — Sélectionnez l'élève dans la liste
+        \item \champ{Tranche} — Sélectionnez la tranche de scolarité (1ère, 2ème, 3ème tranche)
+        \item \champ{Montant} — Le montant payé en FCFA
+        \item \champ{Mode de paiement} — Espèces, Virement, Mobile Money
+      \end{itemize}
+    \item Cliquez sur \bouton{Enregistrer le paiement}
+    \item Un reçu de paiement est automatiquement généré
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_paiements.png}{Module de paiements — Statistiques et enregistrement}
+
+\screenshot{admin_paiements_recu.png}{Reçu de paiement généré automatiquement}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Bus Scolaire}
+\label{sec:admin_bus}
+
+\begin{etape}{\faStepForward\quad Gérer le transport scolaire}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Bus Scolaire}
+    \item La page affiche la liste des bus, leurs itinéraires et les élèves inscrits
+    \item Pour ajouter un bus, cliquez sur \boutonvert{+ Nouveau bus}
+    \item Renseignez le \champ{Numéro d'immatriculation}, la \champ{Capacité} et l'\champ{Itinéraire}
+    \item Pour inscrire un élève au bus, cliquez sur \bouton{Ajouter un passager}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_bus.png}{Gestion du transport scolaire}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Bulletins}
+\label{sec:admin_bulletins}
+
+\begin{etape}{\faStepForward\quad Générer et publier les bulletins}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Bulletins}
+    \item Sélectionnez la \champ{Classe}, le \champ{Trimestre} et l'\champ{Année académique}
+    \item Cliquez sur \bouton{Générer les bulletins}
+    \item Le système calcule automatiquement les moyennes, rangs et appréciations
+    \item Vérifiez les bulletins générés dans le tableau
+    \item Cliquez sur \boutonvert{Publier} pour rendre les bulletins visibles aux parents
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_bulletins_liste.png}{Liste des bulletins générés par classe}
+
+\screenshot{admin_bulletin_detail.png}{Détail d'un bulletin — Notes, moyennes, rang et appréciations}
+
+\begin{note}
+  Un bulletin publié est visible par le parent dans son espace personnel. Avant publication, seuls les administrateurs et directeurs peuvent le consulter.
+\end{note}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Discipline et Absences}
+\label{sec:admin_discipline}
+
+\begin{etape}{\faStepForward\quad Gérer la discipline}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Discipline \& Absences}
+    \item Le module comporte deux onglets :
+      \begin{itemize}
+        \item \textbf{Absences} — Liste des élèves absents avec la date et la durée
+        \item \textbf{Sanctions} — Avertissements, blâmes et exclusions
+      \end{itemize}
+    \item Pour enregistrer une absence, cliquez sur \boutonvert{+ Signaler une absence}
+    \item Sélectionnez l'\champ{Élève}, la \champ{Date} et le \champ{Motif}
+    \item Cliquez sur \bouton{Enregistrer}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_discipline.png}{Module Discipline \& Absences}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Personnel}
+\label{sec:admin_personnel}
+
+\begin{etape}{\faStepForward\quad Gérer le personnel}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Personnel}
+    \item La page affiche le personnel non-enseignant (agents de sécurité, secrétaires, etc.)
+    \item Ajoutez, modifiez ou supprimez les membres du personnel
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_personnel.png}{Gestion du personnel administratif}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Rapports}
+\label{sec:admin_rapports}
+
+\begin{etape}{\faStepForward\quad Consulter les rapports}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Rapports}
+    \item Sélectionnez le type de rapport : \textbf{Pédagogique}, \textbf{Financier} ou \textbf{Discipline}
+    \item Les rapports sont générés automatiquement à partir des données de l'application
+    \item Vous pouvez les \textbf{imprimer} ou les \textbf{exporter en PDF}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_rapports.png}{Module des rapports — Sélection et affichage}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Messagerie}
+\label{sec:admin_messagerie}
+
+\begin{etape}{\faStepForward\quad Envoyer un message}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Messages}
+    \item La messagerie s'ouvre avec :
+      \begin{itemize}
+        \item À gauche : la \textbf{liste des contacts} (enseignants, parents, directeurs, intendants)
+        \item À droite : la \textbf{conversation} sélectionnée
+      \end{itemize}
+    \item Cliquez sur un contact pour ouvrir la conversation
+    \item Tapez votre message dans la zone de texte en bas
+    \item Cliquez sur \bouton{Envoyer} ou appuyez sur Entrée
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_messagerie.png}{Interface de messagerie — Conversations et envoi}
+
+\begin{note}
+  Le badge rouge \textcolor{danger}{\faBell} à côté de « Messages » dans le menu indique le nombre de messages non lus. Ce compteur se met à jour automatiquement.
+\end{note}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Mon Profil}
+\label{sec:admin_profil}
+
+\begin{etape}{\faStepForward\quad Consulter/modifier son profil}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans le menu, cliquez sur \menu{Mon Profil}
+    \item Votre fiche personnelle s'affiche avec vos informations
+    \item Vous pouvez modifier votre \champ{Mot de passe}, votre \champ{Email} et votre \champ{Téléphone}
+    \item Cliquez sur \bouton{Enregistrer} pour sauvegarder les modifications
+  \end{enumerate}
+\end{etape}
+
+\screenshot{admin_profil.png}{Page de profil administrateur}
+
+
+% ============================================================================
+%  CHAPITRE 4 : ESPACE DIRECTEUR
+% ============================================================================
+\chapter{Espace Directeur}
+\label{chap:directeur}
+
+Le directeur a une vue de \textbf{supervision} sur l'ensemble de l'établissement. Il peut consulter toutes les données académiques et financières sans nécessairement les modifier.
+
+\section{Tableau de bord Directeur}
+
+\begin{etape}{\faStepForward\quad Accès}
+  Après connexion avec un compte \role{Directeur}, vous arrivez automatiquement sur le tableau de bord directeur.
+\end{etape}
+
+\screenshot{directeur_dashboard.png}{Tableau de bord Directeur — Supervision globale}
+
+\subsection*{Fonctionnalités du tableau de bord}
+\begin{itemize}[label=\textcolor{brandOrange}{\faCheckCircle}]
+  \item Synthèse des effectifs (élèves, enseignants, classes)
+  \item État des paiements (montant collecté, taux de recouvrement)
+  \item Dernières inscriptions
+  \item Alertes et notifications
+\end{itemize}
+
+\section{Menu du Directeur}
+
+Le directeur dispose des sections suivantes dans son menu :
+
+\begin{table}[htbp]
+  \centering
+  \caption{Sections accessibles au Directeur}
+  \begin{tabularx}{\textwidth}{lX}
+    \toprule
+    \textbf{Section} & \textbf{Description} \\
+    \midrule
+    Tableau de bord & Vue d'ensemble avec statistiques \\
+    Messages & Messagerie interne — communication avec tous les acteurs \\
+    Rapports & Consultation des rapports pédagogiques et financiers \\
+    Élèves & Consultation de la liste des élèves (lecture seule) \\
+    Enseignants & Consultation de la liste des enseignants \\
+    Classes & Consultation des classes \\
+    Salles & Consultation des salles \\
+    Paiements & Suivi des paiements \\
+    Tranches & Gestion des tranches de scolarité \\
+    Élèves en impayé & Liste des élèves n'ayant pas soldé leur scolarité \\
+    Mon Profil & Consultation et modification du profil personnel \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Suivi des Paiements}
+
+\begin{etape}{\faStepForward\quad Consulter les paiements}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \menu{Paiements} dans le menu
+    \item La page affiche :
+      \begin{itemize}
+        \item Le montant total collecté
+        \item Le nombre de paiements par tranche
+        \item La liste détaillée des paiements
+      \end{itemize}
+    \item Utilisez les filtres pour cibler une classe ou une période
+  \end{enumerate}
+\end{etape}
+
+\screenshot{directeur_paiements.png}{Vue des paiements — Espace Directeur}
+
+\section{Élèves en impayé}
+
+\begin{etape}{\faStepForward\quad Identifier les impayés}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \menu{Élèves en impayé}
+    \item La liste affiche les élèves dont la scolarité n'est pas entièrement soldée
+    \item Pour chaque élève : le montant payé, le montant restant et le pourcentage de paiement
+  \end{enumerate}
+\end{etape}
+
+\screenshot{directeur_impayes.png}{Liste des élèves en impayé}
+
+\section{Communication}
+
+Le directeur peut communiquer avec \textbf{tous les acteurs} de l'application via la messagerie interne. La procédure est identique à celle décrite dans la section~\ref{sec:admin_messagerie}.
+
+\screenshot{directeur_messages.png}{Messagerie du Directeur}
+
+
+% ============================================================================
+%  CHAPITRE 5 : ESPACE INTENDANT
+% ============================================================================
+\chapter{Espace Intendant}
+\label{chap:intendant}
+
+L'intendant est responsable de la \textbf{gestion financière} de l'établissement. Son espace est centré sur les paiements, les tranches de scolarité et le suivi des impayés.
+
+\section{Tableau de bord Intendant}
+
+\screenshot{intendant_dashboard.png}{Tableau de bord Intendant — Vue financière}
+
+\subsection*{Indicateurs financiers}
+\begin{itemize}[label=\textcolor{brandOrange}{\faMoneyBillWave}]
+  \item Montant total collecté
+  \item Nombre de paiements du jour
+  \item Taux de recouvrement global
+  \item Montant des impayés
+\end{itemize}
+
+\section{Enregistrer un paiement}
+
+La procédure est identique à celle décrite dans la section~\ref{sec:admin_paiements}. L'intendant accède à la même interface de paiements.
+
+\screenshot{intendant_paiement.png}{Enregistrement d'un paiement — Espace Intendant}
+
+\section{Gérer les tranches de scolarité}
+
+\begin{etape}{\faStepForward\quad Configurer les tranches}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \menu{Tranches} dans le menu
+    \item La page affiche les tranches existantes avec les montants et les dates limites
+    \item Pour créer une nouvelle tranche, cliquez sur \boutonvert{+ Nouvelle tranche}
+    \item Renseignez :
+      \begin{itemize}
+        \item \champ{Libellé} — Ex : « 1ère Tranche », « 2ème Tranche »
+        \item \champ{Montant} — Le montant en FCFA
+        \item \champ{Date limite} — La date limite de paiement
+        \item \champ{Classe} — La classe concernée (ou toutes les classes)
+      \end{itemize}
+    \item Cliquez sur \bouton{Enregistrer}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{intendant_tranches.png}{Gestion des tranches de scolarité}
+
+\section{Suivi des impayés}
+
+\begin{etape}{\faStepForward\quad Consulter les impayés}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \menu{Élèves en impayé}
+    \item La liste affiche les élèves avec le solde restant
+    \item Vous pouvez filtrer par classe ou par tranche
+    \item Utilisez le bouton \bouton{Exporter} pour générer un fichier des impayés
+  \end{enumerate}
+\end{etape}
+
+\screenshot{intendant_impayes.png}{Suivi des impayés — Espace Intendant}
+
+
+% ============================================================================
+%  CHAPITRE 6 : ESPACE ENSEIGNANT
+% ============================================================================
+\chapter{Espace Enseignant}
+\label{chap:enseignant}
+
+L'enseignant dispose d'un espace personnel dédié à ses activités pédagogiques.
+
+\section{Tableau de bord Enseignant}
+
+\begin{etape}{\faStepForward\quad Accès}
+  Après connexion avec un compte \role{Enseignant}, vous arrivez automatiquement sur votre tableau de bord personnel.
+\end{etape}
+
+\screenshot{enseignant_dashboard.png}{Tableau de bord Enseignant — Vue personnelle}
+
+\subsection*{Informations affichées}
+\begin{itemize}[label=\textcolor{success}{\faCheckCircle}]
+  \item Nombre de classes assignées
+  \item Nombre total d'élèves
+  \item Prochains cours de la journée
+  \item Statistiques d'évaluation
+\end{itemize}
+
+\section{Menu de l'enseignant}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Sections accessibles à l'Enseignant}
+  \begin{tabularx}{\textwidth}{lX}
+    \toprule
+    \textbf{Section} & \textbf{Description} \\
+    \midrule
+    Dashboard Enseignant & Vue d'ensemble personnelle \\
+    Messages & Messagerie — communiquer avec l'administration, les parents \\
+    Emploi du temps & Consulter son emploi du temps hebdomadaire \\
+    Notes \& Évaluations & Saisir les notes et créer des évaluations \\
+    Paramètres & Modifier son profil et mot de passe \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Consulter son emploi du temps}
+
+\begin{etape}{\faStepForward\quad Voir l'emploi du temps}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \menu{Emploi du temps} dans le menu
+    \item Votre emploi du temps hebdomadaire s'affiche sous forme de grille
+    \item Chaque créneau indique : la matière, la classe et la salle
+    \item Les créneaux sont colorés pour faciliter la lecture
+  \end{enumerate}
+\end{etape}
+
+\screenshot{enseignant_emploi.png}{Emploi du temps personnel de l'enseignant}
+
+\section{Saisir les notes}
+
+\begin{etape}{\faStepForward\quad Saisie des notes}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \menu{Notes \& Évaluations}
+    \item Sélectionnez la \champ{Classe} dans la liste déroulante
+    \item Sélectionnez l'\champ{Évaluation} (Devoir, Examen, etc.)
+    \item La liste des élèves de la classe s'affiche avec des champs de saisie
+    \item Pour chaque élève, saisissez la note dans le champ correspondant
+    \item Cliquez sur \boutonvert{Enregistrer les notes}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{enseignant_saisie_notes.png}{Interface de saisie des notes par l'enseignant}
+
+\begin{attention}
+  Vérifiez bien les notes avant de les enregistrer. Une fois enregistrées, seul un administrateur peut les modifier.
+\end{attention}
+
+\section{Créer une évaluation}
+
+\begin{etape}{\faStepForward\quad Créer une nouvelle évaluation}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Dans la page \textbf{Notes \& Évaluations}, cliquez sur \boutonvert{+ Nouvelle évaluation}
+    \item Remplissez :
+      \begin{itemize}
+        \item \champ{Titre} — Ex : « Devoir de Mathématiques n°3 »
+        \item \champ{Classe} — La classe concernée
+        \item \champ{Trimestre} — Le trimestre en cours
+        \item \champ{Type} — Devoir, Examen, Interrogation
+        \item \champ{Date} — La date de l'évaluation
+        \item \champ{Barème} — Note maximale (ex : 20)
+      \end{itemize}
+    \item Cliquez sur \bouton{Créer l'évaluation}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{enseignant_creation_eval.png}{Formulaire de création d'évaluation}
+
+\section{Messagerie de l'enseignant}
+
+\begin{etape}{\faStepForward\quad Communiquer}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \menu{Messages} dans le menu
+    \item Vous pouvez envoyer des messages à :
+      \begin{itemize}
+        \item L'administrateur
+        \item Le directeur
+        \item Les parents de vos élèves
+        \item Les autres enseignants
+      \end{itemize}
+    \item Sélectionnez un contact, rédigez votre message et cliquez sur \bouton{Envoyer}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{enseignant_messagerie.png}{Messagerie de l'enseignant}
+
+\begin{astuce}
+  Le badge rouge sur l'icône \textcolor{danger}{\faEnvelope} « Messages » vous indique combien de messages non lus vous avez. Les notifications se mettent à jour automatiquement.
+\end{astuce}
+
+
+% ============================================================================
+%  CHAPITRE 7 : ESPACE PARENT
+% ============================================================================
+\chapter{Espace Parent}
+\label{chap:parent}
+
+L'espace parent permet aux parents d'élèves de \textbf{suivre la scolarité de leur enfant} à distance.
+
+\section{Tableau de bord Parent}
+
+\begin{etape}{\faStepForward\quad Accès}
+  Après connexion avec un compte \role{Parent}, vous arrivez sur le tableau de bord parent.
+\end{etape}
+
+\screenshot{parent_dashboard.png}{Tableau de bord Parent — Suivi de l'enfant}
+
+\subsection*{Informations affichées}
+\begin{itemize}[label=\textcolor{brandBlue}{\faChild}]
+  \item Nom et photo de l'enfant
+  \item Classe et salle actuelles
+  \item Dernières notes et moyenne
+  \item État des paiements
+  \item Absences récentes
+\end{itemize}
+
+\section{Menu du parent}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Sections accessibles au Parent}
+  \begin{tabularx}{\textwidth}{lX}
+    \toprule
+    \textbf{Section} & \textbf{Description} \\
+    \midrule
+    Dashboard Parent & Vue d'ensemble sur l'enfant \\
+    Messages & Communiquer avec l'école (enseignants, administration) \\
+    Paiements & Consulter l'état des paiements de scolarité \\
+    Rapports & Consulter les rapports et bulletins \\
+    Paramètres & Modifier son profil et mot de passe \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Consulter les résultats scolaires}
+
+\begin{etape}{\faStepForward\quad Voir les notes}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Sur le tableau de bord, la section « Dernières notes » affiche les notes récentes
+    \item Cliquez sur \bouton{Voir le bulletin} pour accéder au bulletin complet
+    \item Le bulletin affiche :
+      \begin{itemize}
+        \item Toutes les matières avec les notes et coefficients
+        \item La moyenne générale
+        \item Le rang dans la classe
+        \item L'appréciation du conseil de classe
+      \end{itemize}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{parent_bulletin.png}{Bulletin scolaire vu par le parent}
+
+\section{Consulter les paiements}
+
+\begin{etape}{\faStepForward\quad Voir l'état des paiements}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \menu{Paiements} dans le menu
+    \item La page affiche :
+      \begin{itemize}
+        \item Le montant total de la scolarité
+        \item Le montant déjà payé
+        \item Le montant restant à payer
+        \item L'historique des paiements avec les dates et reçus
+      \end{itemize}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{parent_paiements.png}{État des paiements — Espace Parent}
+
+\section{Communiquer avec l'école}
+
+\begin{etape}{\faStepForward\quad Envoyer un message}
+  \begin{enumerate}[label=\textbf{\arabic*.}]
+    \item Cliquez sur \menu{Messages}
+    \item Sélectionnez le destinataire (enseignant, directeur, administration)
+    \item Rédigez votre message
+    \item Cliquez sur \bouton{Envoyer}
+  \end{enumerate}
+\end{etape}
+
+\screenshot{parent_messagerie.png}{Messagerie — Espace Parent}
+
+\begin{astuce}
+  Utilisez la messagerie pour :
+  \begin{itemize}
+    \item Justifier une absence de votre enfant
+    \item Demander un rendez-vous avec un enseignant
+    \item Poser une question sur les résultats scolaires
+    \item Signaler un problème
+  \end{itemize}
+\end{astuce}
+
+
+% ============================================================================
+%  CHAPITRE 8 : CAS D'UTILISATION DÉTAILLÉS
+% ============================================================================
+\chapter{Cas d'Utilisation Détaillés}
+\label{chap:cas_utilisation}
+
+Ce chapitre présente les \textbf{scénarios d'utilisation courants} sous forme de tableaux récapitulatifs, afin de servir de référence rapide.
+
+\section{Cas d'utilisation — Administrateur}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Cas d'utilisation de l'Administrateur}
+  \small
+  \rowcolors{2}{bgLight}{white}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.5cm} p{3cm} X p{2.5cm}}
+    \toprule
+    \textbf{Cas d'utilisation} & \textbf{Pré-condition} & \textbf{Description} & \textbf{Résultat} \\
+    \midrule
+    Créer un élève & Être connecté comme admin & Saisir les informations personnelles de l'élève et l'affecter à une classe & Élève créé avec un matricule unique \\
+    Inscrire un élève & Élève existant, classe existante & Associer un élève à une classe et une salle pour l'année en cours & Inscription enregistrée \\
+    Créer un enseignant & Être connecté comme admin & Saisir les informations et le cours de l'enseignant & Compte enseignant créé avec identifiants \\
+    Affecter un enseignant & Enseignant et classe existants & Lier un enseignant à une ou plusieurs classes & Emploi du temps mis à jour \\
+    Créer une classe & Être connecté comme admin & Définir un libellé et un cycle & Classe disponible dans le système \\
+    Créer une salle & Classe existante & Définir une salle avec sa capacité & Salle disponible pour les inscriptions \\
+    Créer un cours & Classe et enseignant existants & Définir une matière avec coefficient et volume horaire & Cours créé et assigné \\
+    Planifier l'emploi du temps & Cours et salles existants & Placer les créneaux horaires dans la grille & Emploi du temps publié \\
+    Enregistrer un paiement & Élève inscrit & Saisir le montant et le mode de paiement & Reçu de paiement généré \\
+    Générer un bulletin & Notes saisies, trimestre configuré & Calculer les moyennes et rangs automatiquement & Bulletin prêt à publier \\
+    Publier un bulletin & Bulletin généré & Rendre le bulletin visible aux parents & Parents notifiés \\
+    Enregistrer une absence & Élève existant & Saisir la date, l'heure et le motif & Absence enregistrée \\
+    Envoyer un message & Être connecté & Rédiger et envoyer un message à un autre acteur & Message délivré avec notification \\
+    Gérer le bus scolaire & Être connecté comme admin & Créer un bus et y inscrire des élèves & Élèves affectés au bus \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Cas d'utilisation — Directeur}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Cas d'utilisation du Directeur}
+  \small
+  \rowcolors{2}{bgLight}{white}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.5cm} p{3cm} X p{2.5cm}}
+    \toprule
+    \textbf{Cas d'utilisation} & \textbf{Pré-condition} & \textbf{Description} & \textbf{Résultat} \\
+    \midrule
+    Consulter le tableau de bord & Être connecté comme directeur & Voir les statistiques globales de l'établissement & Vue d'ensemble affichée \\
+    Consulter les élèves & Être connecté & Parcourir la liste des élèves par classe & Liste affichée \\
+    Consulter les enseignants & Être connecté & Voir les enseignants actifs et leurs matières & Liste affichée \\
+    Suivre les paiements & Être connecté & Consulter les montants collectés et les impayés & Données financières affichées \\
+    Identifier les impayés & Être connecté & Voir la liste des élèves en retard de paiement & Liste des impayés \\
+    Consulter les rapports & Être connecté & Lire les rapports pédagogiques et financiers & Rapport affiché \\
+    Envoyer un message & Être connecté & Communiquer avec enseignants, parents, admin, intendant & Message délivré \\
+    Modifier son profil & Être connecté & Changer son mot de passe ou ses informations & Profil mis à jour \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Cas d'utilisation — Intendant}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Cas d'utilisation de l'Intendant}
+  \small
+  \rowcolors{2}{bgLight}{white}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.5cm} p{3cm} X p{2.5cm}}
+    \toprule
+    \textbf{Cas d'utilisation} & \textbf{Pré-condition} & \textbf{Description} & \textbf{Résultat} \\
+    \midrule
+    Consulter le tableau de bord & Être connecté comme intendant & Voir les indicateurs financiers & Vue financière affichée \\
+    Enregistrer un paiement & Élève inscrit & Saisir le montant, la tranche et le mode & Paiement enregistré et reçu généré \\
+    Configurer les tranches & Être connecté & Définir les montants et dates limites par tranche & Tranches configurées \\
+    Suivre les impayés & Être connecté & Identifier les élèves en retard de paiement & Liste des impayés \\
+    Consulter les inscriptions & Être connecté & Vérifier les inscriptions et les scolarités & Liste affichée \\
+    Envoyer un message & Être connecté & Communiquer avec les autres acteurs & Message délivré \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Cas d'utilisation — Enseignant}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Cas d'utilisation de l'Enseignant}
+  \small
+  \rowcolors{2}{bgLight}{white}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.5cm} p{3cm} X p{2.5cm}}
+    \toprule
+    \textbf{Cas d'utilisation} & \textbf{Pré-condition} & \textbf{Description} & \textbf{Résultat} \\
+    \midrule
+    Consulter le tableau de bord & Être connecté comme enseignant & Voir ses classes, élèves, prochains cours & Vue personnelle affichée \\
+    Consulter l'emploi du temps & Être connecté & Voir sa grille horaire hebdomadaire & Emploi du temps affiché \\
+    Saisir les notes & Évaluation créée & Entrer les notes de chaque élève pour une évaluation & Notes enregistrées \\
+    Créer une évaluation & Être connecté, cours existant & Définir le titre, type, date et barème & Évaluation créée \\
+    Faire l'appel & Être connecté, créneau de cours & Marquer les élèves présents et absents & Présences enregistrées \\
+    Envoyer un message & Être connecté & Communiquer avec l'administration, les parents & Message délivré \\
+    Modifier son profil & Être connecté & Changer son mot de passe & Profil mis à jour \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Cas d'utilisation — Parent}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Cas d'utilisation du Parent}
+  \small
+  \rowcolors{2}{bgLight}{white}
+  \begin{tabularx}{\textwidth}{>{\bfseries}p{3.5cm} p{3cm} X p{2.5cm}}
+    \toprule
+    \textbf{Cas d'utilisation} & \textbf{Pré-condition} & \textbf{Description} & \textbf{Résultat} \\
+    \midrule
+    Consulter le tableau de bord & Être connecté comme parent & Voir les infos de l'enfant, notes récentes, absences & Vue enfant affichée \\
+    Consulter le bulletin & Bulletin publié & Voir les notes, la moyenne, le rang et l'appréciation & Bulletin affiché \\
+    Consulter les paiements & Être connecté & Voir le montant payé, le restant et les reçus & État financier affiché \\
+    Envoyer un message & Être connecté & Communiquer avec un enseignant ou l'administration & Message délivré \\
+    Justifier une absence & Être connecté & Envoyer un message expliquant l'absence de l'enfant & Message envoyé \\
+    Modifier son profil & Être connecté & Changer son mot de passe ou ses informations & Profil mis à jour \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+
+% ============================================================================
+%  CHAPITRE 9 : FOIRE AUX QUESTIONS
+% ============================================================================
+\chapter{Foire Aux Questions (FAQ)}
+\label{chap:faq}
+
+\begin{tcolorbox}[colback=bgLight, colframe=brandBlue, rounded corners, title={\faQuestionCircle\quad Questions fréquentes}]
+
+\textbf{Q1 : J'ai oublié mon mot de passe, que faire~?}\\
+\textit{R :} Contactez l'administrateur de l'école. Lui seul peut réinitialiser votre mot de passe. Vous recevrez un nouveau mot de passe temporaire que vous devrez changer lors de votre prochaine connexion.\\[8pt]
+
+\textbf{Q2 : La page ne s'affiche pas correctement, que faire~?}\\
+\textit{R :} 
+\begin{enumerate}[label=\arabic*.]
+  \item Vérifiez votre connexion internet
+  \item Essayez de rafraîchir la page (touche \textbf{F5} ou \textbf{Ctrl+R})
+  \item Essayez un autre navigateur (Google Chrome est recommandé)
+  \item Videz le cache de votre navigateur (\textbf{Ctrl+Maj+Suppr})
+\end{enumerate}
+\vspace{4pt}
+
+\textbf{Q3 : Je suis parent et je ne vois pas le bulletin de mon enfant}\\
+\textit{R :} Le bulletin doit d'abord être \textbf{publié} par l'administrateur ou le directeur. Si le trimestre est terminé mais que le bulletin n'apparaît pas, contactez l'école.\\[8pt]
+
+\textbf{Q4 : Comment changer mon mot de passe~?}\\
+\textit{R :} Allez dans \menu{Mon Profil} ou \menu{Paramètres} dans votre menu. Vous y trouverez l'option pour modifier votre mot de passe. Entrez l'ancien mot de passe, puis le nouveau (deux fois).\\[8pt]
+
+\textbf{Q5 : L'application est très lente, que faire~?}\\
+\textit{R :} 
+\begin{itemize}
+  \item Vérifiez votre connexion internet
+  \item Fermez les autres onglets de votre navigateur
+  \item Si le problème persiste, contactez le support technique
+\end{itemize}
+\vspace{4pt}
+
+\textbf{Q6 : Je suis enseignant, comment accéder à mes cours~?}\\
+\textit{R :} Après connexion, cliquez sur \menu{Emploi du temps} pour voir vos cours planifiés. Pour saisir les notes, allez dans \menu{Notes \& Évaluations}.\\[8pt]
+
+\textbf{Q7 : Puis-je utiliser l'application sur mon téléphone~?}\\
+\textit{R :} Oui ! L'application est \textbf{responsive} et s'adapte à la taille de votre écran. Ouvrez simplement votre navigateur mobile et tapez l'adresse de l'application.\\[8pt]
+
+\textbf{Q8 : Les messages sont-ils confidentiels~?}\\
+\textit{R :} Oui. Seuls l'expéditeur et le destinataire peuvent voir le contenu d'un message. L'administrateur système n'a pas accès aux messages privés entre les utilisateurs.
+
+\end{tcolorbox}
+
+
+% ============================================================================
+%  CHAPITRE 10 : GLOSSAIRE
+% ============================================================================
+\chapter{Glossaire}
+\label{chap:glossaire}
+
+\begin{description}[style=nextline, leftmargin=3cm, font=\bfseries\color{brandBlue}]
+  \item[Administrateur] Utilisateur ayant tous les droits sur l'application. Responsable de la configuration et de la gestion complète de l'école.
+  \item[Année académique] Période scolaire allant généralement de septembre à juillet.
+  \item[Bulletin] Document récapitulatif des notes et appréciations d'un élève pour un trimestre donné.
+  \item[Classe] Regroupement d'élèves d'un même niveau (ex : SIL, CP, CE1, CE2, CM1, CM2).
+  \item[Coefficient] Valeur numérique attribuée à une matière, reflétant son importance relative dans le calcul de la moyenne.
+  \item[Cours] Matière enseignée (ex : Mathématiques, Français, Anglais).
+  \item[Cycle] Regroupement de classes par niveau d'enseignement (ex : Cycle 1 = Maternel, Cycle 2 = Primaire).
+  \item[Dashboard] Tableau de bord — page d'accueil affichant les indicateurs clés.
+  \item[Directeur] Responsable pédagogique et administratif de l'établissement.
+  \item[Emploi du temps] Planning hebdomadaire des cours pour une classe ou un enseignant.
+  \item[Évaluation] Tout exercice noté (devoir, examen, interrogation) servant à évaluer les compétences d'un élève.
+  \item[FCFA] Franc de la Communauté Financière Africaine — monnaie utilisée au Cameroun.
+  \item[Fréquentation] Table du système qui enregistre la présence des élèves dans les salles.
+  \item[Impayé] Montant de scolarité non encore réglé par un élève ou son parent.
+  \item[Inscription] Acte administratif officialisant l'admission d'un élève dans une classe.
+  \item[Intendant] Responsable financier de l'établissement.
+  \item[Matricule] Identifiant unique attribué à chaque élève lors de son inscription.
+  \item[Mobile Money] Service de paiement mobile (Orange Money, MTN Money).
+  \item[Notification] Alerte visuelle (badge rouge) indiquant un événement nécessitant l'attention de l'utilisateur.
+  \item[Parent] Tuteur légal d'un ou plusieurs élèves.
+  \item[Salle] Espace physique où se déroulent les cours. Chaque salle est associée à une classe.
+  \item[Sidebar] Menu de navigation latéral (à gauche de l'écran).
+  \item[Tranche] Division du montant de la scolarité en plusieurs versements échelonnés.
+  \item[Trimestre] Division de l'année scolaire en trois périodes (1er, 2e, 3e trimestre).
+\end{description}
+
+
+% ============================================================================
+%  CHAPITRE 11 : SUPPORT TECHNIQUE
+% ============================================================================
+\chapter{Support Technique}
+\label{chap:support}
+
+\section{Contacter le support}
+
+En cas de problème technique, vous pouvez contacter le support de plusieurs manières :
+
+\begin{table}[htbp]
+  \centering
+  \caption{Moyens de contact du support technique}
+  \begin{tabularx}{\textwidth}{lX}
+    \toprule
+    \textbf{Canal} & \textbf{Coordonnées} \\
+    \midrule
+    \faEnvelope\quad Email & support@ecolegest.cm \\
+    \faPhone\quad Téléphone & +237 6XX XXX XXX \\
+    \faWhatsapp\quad WhatsApp & +237 6XX XXX XXX \\
+    \faMapMarkerAlt\quad Adresse & Melen, Yaoundé — Cameroun \\
+    \faClock\quad Horaires & Lundi - Vendredi, 8h00 - 17h00 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Informations à fournir au support}
+
+Lorsque vous contactez le support technique, veuillez fournir :
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item Votre \textbf{nom d'utilisateur}
+  \item Votre \textbf{rôle} (admin, directeur, enseignant, parent, intendant)
+  \item Une \textbf{description précise du problème}
+  \item Une \textbf{capture d'écran} si possible (appuyez sur \textbf{Impr. écran} ou \textbf{Windows + Maj + S})
+  \item Le \textbf{navigateur} que vous utilisez (Chrome, Firefox, etc.)
+  \item L'\textbf{heure} à laquelle le problème s'est produit
+\end{enumerate}
+
+\section{Procédures de dépannage rapide}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Problèmes courants et solutions}
+  \small
+  \rowcolors{2}{bgLight}{white}
+  \begin{tabularx}{\textwidth}{p{4cm} X}
+    \toprule
+    \textbf{Problème} & \textbf{Solution} \\
+    \midrule
+    Page blanche & Rafraîchissez la page (F5). Si le problème persiste, videz le cache du navigateur. \\
+    Mot de passe oublié & Contactez l'administrateur pour une réinitialisation. \\
+    Impossible de se connecter & Vérifiez que le nom d'utilisateur et le mot de passe sont corrects. Attention aux majuscules. \\
+    Message non envoyé & Vérifiez votre connexion internet. Réessayez après quelques secondes. \\
+    Bulletin non visible & Le bulletin n'a pas encore été publié. Contactez l'administration. \\
+    Données non à jour & Rafraîchissez la page. Les données sont mises à jour en temps réel. \\
+    Erreur 500 & Erreur serveur. Réessayez dans quelques minutes. Si le problème persiste, contactez le support. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+
+% ============================================================================
+%  ANNEXES
+% ============================================================================
+\appendix
+
+\chapter{Raccourcis et Astuces}
+\label{app:raccourcis}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Raccourcis clavier utiles}
+  \begin{tabularx}{\textwidth}{lX}
+    \toprule
+    \textbf{Raccourci} & \textbf{Action} \\
+    \midrule
+    \textbf{F5} ou \textbf{Ctrl+R} & Rafraîchir la page \\
+    \textbf{Ctrl+F} & Rechercher du texte dans la page \\
+    \textbf{Ctrl+P} & Imprimer la page \\
+    \textbf{Ctrl+Maj+Suppr} & Vider le cache du navigateur \\
+    \textbf{Entrée} & Valider un formulaire ou envoyer un message \\
+    \textbf{Tab} & Passer au champ suivant dans un formulaire \\
+    \textbf{Échap} & Fermer une fenêtre modale ou un popup \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\chapter{Index des Captures d'Écran}
+\label{app:index_screenshots}
+
+Le tableau ci-dessous récapitule toutes les captures d'écran nécessaires pour compléter ce manuel. Placez les fichiers images dans le dossier \texttt{screenshots/} à côté du fichier \texttt{.tex}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Liste des captures d'écran à réaliser}
+  \small
+  \rowcolors{2}{bgLight}{white}
+  \begin{tabularx}{\textwidth}{>{\ttfamily\small}p{5.5cm} X l}
+    \toprule
+    \textbf{Nom du fichier} & \textbf{Description} & \textbf{Page} \\
+    \midrule
+    logo.png & Logo de l'application (512×512 px) & Couverture \\
+    schema\_general.png & Schéma des modules et acteurs & Chap. 1 \\
+    landing\_page.png & Page d'accueil publique & Chap. 2 \\
+    login\_page.png & Formulaire de connexion & Chap. 2 \\
+    login\_success.png & Redirection après connexion & Chap. 2 \\
+    sidebar\_deconnexion.png & Menu latéral avec bouton déconnexion & Chap. 2 \\
+    interface\_zones.png & Zones de l'interface annotées & Chap. 2 \\
+    admin\_dashboard.png & Tableau de bord admin & Chap. 3 \\
+    admin\_eleves\_liste.png & Liste des élèves & Chap. 3 \\
+    admin\_eleves\_ajout.png & Formulaire ajout élève & Chap. 3 \\
+    admin\_enseignants\_liste.png & Liste des enseignants & Chap. 3 \\
+    admin\_enseignants\_ajout.png & Formulaire ajout enseignant & Chap. 3 \\
+    admin\_enseignants\_affectation.png & Affectation enseignant & Chap. 3 \\
+    admin\_classes.png & Gestion des classes & Chap. 3 \\
+    admin\_salles.png & Gestion des salles & Chap. 3 \\
+    admin\_inscriptions.png & Module d'inscription & Chap. 3 \\
+    admin\_cours.png & Gestion des cours & Chap. 3 \\
+    admin\_evaluations.png & Création d'évaluation & Chap. 3 \\
+    admin\_emploi\_temps.png & Emploi du temps & Chap. 3 \\
+    admin\_parents.png & Gestion des parents & Chap. 3 \\
+    admin\_paiements.png & Module de paiements & Chap. 3 \\
+    admin\_paiements\_recu.png & Reçu de paiement & Chap. 3 \\
+    admin\_bus.png & Gestion du bus & Chap. 3 \\
+    admin\_bulletins\_liste.png & Liste des bulletins & Chap. 3 \\
+    admin\_bulletin\_detail.png & Détail d'un bulletin & Chap. 3 \\
+    admin\_discipline.png & Discipline et absences & Chap. 3 \\
+    admin\_personnel.png & Gestion du personnel & Chap. 3 \\
+    admin\_rapports.png & Module des rapports & Chap. 3 \\
+    admin\_messagerie.png & Interface de messagerie & Chap. 3 \\
+    admin\_profil.png & Profil administrateur & Chap. 3 \\
+    directeur\_dashboard.png & Tableau de bord directeur & Chap. 4 \\
+    directeur\_paiements.png & Paiements vu par le directeur & Chap. 4 \\
+    directeur\_impayes.png & Impayés vu par le directeur & Chap. 4 \\
+    directeur\_messages.png & Messagerie du directeur & Chap. 4 \\
+    intendant\_dashboard.png & Tableau de bord intendant & Chap. 5 \\
+    intendant\_paiement.png & Paiement vu par l'intendant & Chap. 5 \\
+    intendant\_tranches.png & Gestion des tranches & Chap. 5 \\
+    intendant\_impayes.png & Impayés vu par l'intendant & Chap. 5 \\
+    enseignant\_dashboard.png & Tableau de bord enseignant & Chap. 6 \\
+    enseignant\_emploi.png & Emploi du temps enseignant & Chap. 6 \\
+    enseignant\_saisie\_notes.png & Saisie des notes & Chap. 6 \\
+    enseignant\_creation\_eval.png & Création d'évaluation & Chap. 6 \\
+    enseignant\_messagerie.png & Messagerie enseignant & Chap. 6 \\
+    parent\_dashboard.png & Tableau de bord parent & Chap. 7 \\
+    parent\_bulletin.png & Bulletin vu par le parent & Chap. 7 \\
+    parent\_paiements.png & Paiements vu par le parent & Chap. 7 \\
+    parent\_messagerie.png & Messagerie parent & Chap. 7 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ============================================================================
+%  FIN DU DOCUMENT
+% ============================================================================
+
+\vfill
+\begin{center}
+  \rule{6cm}{0.5pt}\\[10pt]
+  {\large\textbf{EcoleGest — Application de Gestion Scolaire}}\\[4pt]
+  {\small Melen, Yaoundé — Cameroun}\\[4pt]
+  {\small\textcopyright{} 2026 — Tous droits réservés}
+\end{center}
+
+\end{document}

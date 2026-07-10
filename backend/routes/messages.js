@@ -9,6 +9,7 @@ router.use(verifyToken);
 router.get('/contacts', messageController.getContacts);
 router.get('/', messageController.getMessages);
 router.post('/', messageController.sendMessage);
+router.get('/unread-count', messageController.getUnreadCount);
 router.patch('/read', messageController.markConversationRead);
 
 // Groups

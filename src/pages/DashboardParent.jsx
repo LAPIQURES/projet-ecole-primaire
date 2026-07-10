@@ -401,7 +401,7 @@ export default function DashboardParent() {
                   <strong style={{ color: '#7c3aed' }}>Appréciation : </strong>{bulletinDetail.appreciation}
                 </div>
               )}
-              <div style={{ display: 'grid', gap: 8 }}>
+              <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
                 {Array.isArray(bulletinDetail.details) && bulletinDetail.details.map((d) => (
                   <div key={d.idDetail} style={{ padding: '12px 14px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#1e1b4b' }}>{d.libelleCours}</div>
@@ -410,6 +410,36 @@ export default function DashboardParent() {
                   </div>
                 ))}
               </div>
+              {notes.length > 0 && (
+                <div style={{ background: '#f8fafc', borderRadius: 18, padding: '18px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#1e1b4b', marginBottom: 12 }}>Notes détaillées</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        {['Cours', 'Note', 'Grade', '%', 'Date'].map((h) => (
+                          <th key={h} style={{ padding: '10px 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {notes.map((note, index) => {
+                        const grade = note.note >= 16 ? 'A+' : note.note >= 14 ? 'A' : note.note >= 12 ? 'B' : note.note >= 10 ? 'C' : 'F';
+                        const percent = note.note != null ? `${Math.round((Number(note.note) / 20) * 100)}%` : '—';
+                        const formattedDate = note.created_at ? new Date(note.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : note.date || '—';
+                        return (
+                          <tr key={note.idEval || index} style={{ borderBottom: index < notes.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                            <td style={{ padding: '12px 8px', fontSize: 13, color: '#1e293b', fontWeight: 600 }}>{note.cours || note.matiere || '—'}</td>
+                            <td style={{ padding: '12px 8px', fontSize: 13, color: '#1f2937', fontWeight: 700 }}>{note.note != null ? `${note.note}/20` : '—'}</td>
+                            <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569', fontWeight: 600 }}>{grade}</td>
+                            <td style={{ padding: '12px 8px', fontSize: 13, color: '#475569', fontWeight: 600 }}>{percent}</td>
+                            <td style={{ padding: '12px 8px', fontSize: 13, color: '#64748b', fontWeight: 500 }}>{formattedDate}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>
