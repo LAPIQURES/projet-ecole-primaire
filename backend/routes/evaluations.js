@@ -72,6 +72,24 @@ router.post('/', canCreateEvaluation, async (req, res) => {
       return res.status(400).json({ error: 'La note doit être un nombre entre 0 et 20' });
     }
 
+    // Ensure we have sensible defaults for idEpreuve, idSession and idPers when possible
+    let _idEpreuve = idEpreuve;
+    let _idSession = idSession;
+    let _idPers = idPers || req.user?.id || req.user?.idPers || null;
+
+    if (!_idEpreuve) {
+      try {
+        const [epRows] = await pool.query('SELECT idEpreuve FROM Epreuve LIMIT 1');
+        if (Array.isArray(epRows) && epRows.length > 0) _idEpreuve = epRows[0].idEpreuve;
+      } catch (e) { /* ignore */ }
+    }
+    if (!_idSession) {
+      try {
+        const [sRows] = await pool.query('SELECT idSession FROM Session LIMIT 1');
+        if (Array.isArray(sRows) && sRows.length > 0) _idSession = sRows[0].idSession;
+      } catch (e) { /* ignore */ }
+    }
+
     const idAdmin = req.user?.id || 1000;
     const cols = await getTableColumns('Evaluation');
     
@@ -96,9 +114,9 @@ router.post('/', canCreateEvaluation, async (req, res) => {
     // Optional fields
     addIf('appreciation', appreciation || null);
     addIf('idAdmin', idAdmin);
-    addIf('idEpreuve', idEpreuve || null);
-    addIf('idSession', idSession || null);
-    addIf('idPers', idPers || null);
+    addIf('idEpreuve', _idEpreuve != null ? _idEpreuve : null);
+    addIf('idSession', _idSession != null ? _idSession : null);
+    addIf('idPers', _idPers != null ? _idPers : null);
     
     // Timestamp
     if (cols.includes('created_at')) {

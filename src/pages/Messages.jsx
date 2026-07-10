@@ -7,6 +7,8 @@ import { MessageSquare, Send, Search, Mail, CheckCheck, Users, GraduationCap } f
 const roleLabel = {
   admin: 'Administration',
   superadmin: 'Administration',
+  directeur: 'Directeur',
+  intendant: 'Intendant',
   enseignant: 'Enseignant',
   parent: 'Parent',
 };
@@ -14,6 +16,8 @@ const roleLabel = {
 const roleIcon = {
   admin: GraduationCap,
   superadmin: GraduationCap,
+  directeur: GraduationCap,
+  intendant: Users,
   enseignant: Users,
   parent: Mail,
 };
@@ -23,8 +27,8 @@ const getUserIdentity = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     return {
       role: user.role === 'superadmin' ? 'admin' : (user.role || 'admin'),
-      identifier: String(user.username || user.id || ''),
-      label: user.nom || user.username || 'Utilisateur',
+      identifier: String(user.login || user.username || user.id || ''),
+      label: user.nom || user.login || user.username || 'Utilisateur',
     };
   } catch {
     return { role: 'admin', identifier: '', label: 'Utilisateur' };
@@ -137,6 +141,22 @@ export default function Messages({ noLayout = false }) {
 
     loadGroupHistory();
   }, [selectedContact]);
+
+  useEffect(() => {
+    if (selectedContact && selectedContact.role !== 'group') {
+      const unreadIds = messages
+        .filter(m => !m.isRead && m.receiverRole === me.role && String(m.receiverId) === String(me.identifier) && m.senderRole === selectedContact.role && String(m.senderId) === String(selectedContact.identifier))
+        .map(m => m.idMessage || m.idMessages);
+
+      if (unreadIds.length > 0) {
+        markConversationReadAPI({ messageIds: unreadIds })
+          .then(() => {
+            setMessages(prev => prev.map(m => unreadIds.includes(m.idMessage || m.idMessages) ? { ...m, isRead: 1 } : m));
+          })
+          .catch(console.error);
+      }
+    }
+  }, [messages, selectedContact, me]);
 
   const handleCreateGroup = async (e) => {
     e.preventDefault();
@@ -254,6 +274,7 @@ export default function Messages({ noLayout = false }) {
               filteredContacts.map((contact) => {
                 const Icon = roleIcon[contact.role] || Users;
                 const active = selectedContact?.identifier === contact.identifier && selectedContact?.role === contact.role;
+                const unreadCount = messages.filter(m => !m.isRead && m.receiverRole === me.role && String(m.receiverId) === String(me.identifier) && m.senderRole === contact.role && String(m.senderId) === String(contact.identifier)).length;
                 return (
                   <button
                     key={`${contact.role}-${contact.identifier}`}
@@ -278,6 +299,11 @@ export default function Messages({ noLayout = false }) {
                       <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.label}</div>
                       <div style={{ fontSize: 11, color: '#64748b', textTransform: 'capitalize' }}>{roleLabel[contact.role] || contact.role}</div>
                     </div>
+                    {unreadCount > 0 && (
+                      <div style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>
+                        {unreadCount}
+                      </div>
+                    )}
                   </button>
                 );
               })

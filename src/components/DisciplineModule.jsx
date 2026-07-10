@@ -37,7 +37,7 @@ export default function DisciplineModule() {
   const loadAbsences = async () => {
     setLoading(true);
     try {
-      const response = await API.get('/api/discipline/absences/list', {
+      const response = await API.get('/discipline/absences/list', {
         params: {
           month: filters.month,
           year: filters.year
@@ -194,9 +194,10 @@ export default function DisciplineModule() {
               <tr>
                 <th style={s.th}>NOM & PRÉNOM</th>
                 <th style={s.th}>MATRICULE</th>
+                <th style={s.th}>CLASSE</th>
                 <th style={{ ...s.th, width:'100px' }}>DATE</th>
                 <th style={{ ...s.th, width:'80px' }}>STATUT</th>
-                <th style={s.th}>CLASSE</th>
+                <th style={s.th}>SALLE</th>
                 <th style={s.th}>REMARQUE</th>
               </tr>
             </thead>
@@ -210,6 +211,9 @@ export default function DisciplineModule() {
                     <code style={{ background:'#f1f5f9', padding:'2px 8px', borderRadius:'4px', fontSize:'11px' }}>
                       {absence.matricule}
                     </code>
+                  </td>
+                  <td style={s.td}>
+                    <span style={{ fontSize:'12px', fontWeight:'600', color:'#334155' }}>{absence.classe || '-'}</span>
                   </td>
                   <td style={s.td}>
                     <div style={{ display:'flex', alignItems:'center', gap:'6px', color:'#64748b' }}>

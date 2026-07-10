@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
-import { getRapportsElevesAPI, deleteRapportEleveAPI, getRapportsEnseignantsAPI, deleteRapportEnseignantAPI, createRapportEleveAPI, createRapportEnseignantAPI } from '../services/api';
+import { getRapportsElevesAPI, deleteRapportEleveAPI, getRapportsEnseignantsAPI, deleteRapportEnseignantAPI, createRapportEleveAPI, createRapportEnseignantAPI, getClassesAPI, getSallesAPI, getElevesAPI } from '../services/api';
 import { Trash2, RefreshCw, ShieldAlert, GraduationCap, Search, Plus, X } from 'lucide-react';
 
 export default function Rapports() {
@@ -16,9 +16,34 @@ export default function Rapports() {
     libelle: '', matricule: '', annee: '2024-2025', points: '', commentaire: '', event_date: new Date().toISOString().split('T')[0],
     reference: '', categorie: '', idEnseignant: '', titre: '', details: ''
   });
+  const [selectionMode, setSelectionMode] = useState('matricule'); // 'matricule' | 'classe' | 'salle'
+  const [classes, setClasses] = useState([]);
+  const [salles, setSalles] = useState([]);
+  const [eleves, setEleves] = useState([]);
+  const [selectedClasse, setSelectedClasse] = useState('');
+  const [selectedSalle, setSelectedSalle] = useState('');
+  const [selectedMatricule, setSelectedMatricule] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    // load classes, salles and eleves for selection
+    const loadLookups = async () => {
+      try {
+        const [{ data: classesData }, { data: sallesData }, { data: elevesData }] = await Promise.all([
+          getClassesAPI(), getSallesAPI(), getElevesAPI()
+        ]);
+        setClasses(Array.isArray(classesData) ? classesData : []);
+        setSalles(Array.isArray(sallesData) ? sallesData : []);
+        setEleves(Array.isArray(elevesData) ? elevesData : []);
+      } catch (err) {
+        // ignore lookup errors for now
+        console.error('Lookup load error', err);
+      }
+    };
+    loadLookups();
+  }, []);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -38,9 +63,10 @@ export default function Rapports() {
     setSaving(true);
     try {
       if (formType === 'eleve') {
-        if (!formData.matricule || !formData.libelle) throw new Error('Matricule et libellé obligatoires.');
+        const matriculeToUse = selectedMatricule || formData.matricule || '';
+        if (!matriculeToUse || !formData.libelle) throw new Error('Matricule et libellé obligatoires.');
         await createRapportEleveAPI({
-          libelle: formData.libelle, matricule: formData.matricule, annee: formData.annee,
+          libelle: formData.libelle, matricule: matriculeToUse, annee: formData.annee,
           points: formData.points || 0, commentaire: formData.commentaire, event_date: formData.event_date
         });
       } else {
@@ -51,6 +77,7 @@ export default function Rapports() {
       }
       setShowForm(false);
       setFormData({ libelle: '', matricule: '', annee: '2024-2025', points: '', commentaire: '', event_date: new Date().toISOString().split('T')[0], reference: '', categorie: '', idEnseignant: '', titre: '', details: '' });
+      setSelectedMatricule(''); setSelectedClasse(''); setSelectedSalle('');
       await load();
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Erreur lors de la création');
@@ -128,8 +155,55 @@ export default function Rapports() {
               {formType === 'eleve' ? (
                 <>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Matricule Élève *</label>
-                    <input type="text" value={formData.matricule} onChange={e => setFormData({ ...formData, matricule: e.target.value })} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', boxSizing: 'border-box' }} required />
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Sélection matricule *</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button type="button" onClick={() => setSelectionMode('matricule')} style={{ padding: 8, borderRadius: 8, border: selectionMode === 'matricule' ? '1.5px solid #0062ff' : '1px solid #e2e8f0', background: selectionMode === 'matricule' ? '#eff6ff' : 'white', cursor: 'pointer' }}>Par Matricule</button>
+                        <button type="button" onClick={() => setSelectionMode('classe')} style={{ padding: 8, borderRadius: 8, border: selectionMode === 'classe' ? '1.5px solid #0062ff' : '1px solid #e2e8f0', background: selectionMode === 'classe' ? '#eff6ff' : 'white', cursor: 'pointer' }}>Par Classe</button>
+                        <button type="button" onClick={() => setSelectionMode('salle')} style={{ padding: 8, borderRadius: 8, border: selectionMode === 'salle' ? '1.5px solid #0062ff' : '1px solid #e2e8f0', background: selectionMode === 'salle' ? '#eff6ff' : 'white', cursor: 'pointer' }}>Par Salle</button>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 10 }}>
+                      {selectionMode === 'matricule' && (
+                        <select value={selectedMatricule || formData.matricule} onChange={e => { setSelectedMatricule(e.target.value); setFormData({ ...formData, matricule: e.target.value }); }} style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                          <option value="">-- Choisir un élève --</option>
+                          {eleves.map((el) => (
+                            <option key={el.matricule} value={el.matricule}>{`${el.matricule} — ${el.prenom || ''} ${el.nom || ''} (${el.classe || el.salle || ''})`}</option>
+                          ))}
+                        </select>
+                      )}
+
+                      {selectionMode === 'classe' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <select value={selectedClasse} onChange={e => { setSelectedClasse(e.target.value); setSelectedMatricule(''); }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                            <option value="">-- Choisir une classe --</option>
+                            {classes.map(c => <option key={c.idClasse} value={c.idClasse}>{c.libelle || c.nom || `Classe ${c.idClasse}`}</option>)}
+                          </select>
+                          <select value={selectedMatricule} onChange={e => { setSelectedMatricule(e.target.value); setFormData({ ...formData, matricule: e.target.value }); }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                            <option value="">-- Élève (sélectionné) --</option>
+                            {eleves.filter(el => String(el.idClasse) === String(selectedClasse)).map(el => (
+                              <option key={el.matricule} value={el.matricule}>{`${el.matricule} — ${el.prenom || ''} ${el.nom || ''}`}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {selectionMode === 'salle' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <select value={selectedSalle} onChange={e => { setSelectedSalle(e.target.value); setSelectedMatricule(''); }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                            <option value="">-- Choisir une salle --</option>
+                            {salles.map(s => <option key={s.idSalle} value={s.idSalle}>{s.libelle || s.nom || `Salle ${s.idSalle}`}</option>)}
+                          </select>
+                          <select value={selectedMatricule} onChange={e => { setSelectedMatricule(e.target.value); setFormData({ ...formData, matricule: e.target.value }); }} style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                            <option value="">-- Élève (sélectionné) --</option>
+                            {eleves.filter(el => String(el.idSalle) === String(selectedSalle)).map(el => (
+                              <option key={el.matricule} value={el.matricule}>{`${el.matricule} — ${el.prenom || ''} ${el.nom || ''}`}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label style={{ fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 5 }}>Titre / Libellé *</label>
@@ -178,9 +252,14 @@ export default function Rapports() {
               )}
               
               <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                <button type="submit" disabled={saving} style={{ flex: 1, padding: '12px', background: saving ? '#93c5fd' : '#0062ff', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
-                  {saving ? 'Enregistrement…' : 'Enregistrer le rapport'}
-                </button>
+                <div style={{ flex: 1 }}>
+                  <div style={{ marginBottom: 8, fontSize: 13, color: selectedMatricule && formData.libelle ? '#065f46' : '#92400e', fontWeight: 700 }}>
+                    {selectedMatricule && formData.libelle ? 'Prêt à enregistrer' : 'Sélectionnez un élève et saisissez le libellé pour enregistrer'}
+                  </div>
+                  <button type="submit" disabled={saving || !selectedMatricule || !formData.libelle} style={{ width: '100%', padding: '12px', background: saving ? '#93c5fd' : '#0062ff', color: '#fff', border: 'none', borderRadius: 10, cursor: saving ? 'default' : 'pointer', fontSize: 14, fontWeight: 700 }}>
+                    {saving ? 'Enregistrement…' : 'Enregistrer le rapport'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

@@ -100,7 +100,7 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
 
         // Load attendance for current month
         const month = attendanceMonth.toISOString().split('T')[0].substring(0, 7); // YYYY-MM
-        const attendanceRes = await API.get(`/api/eleves/${eleve.matricule}/attendance`, {
+        const attendanceRes = await API.get(`/eleves/${eleve.matricule}/attendance`, {
           params: { month }
         });
         setAttendance(attendanceRes.data || []);
@@ -229,23 +229,24 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* Card 1: Bio */}
-          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '28px 24px', textAlign: 'center', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+          <div style={{ background: '#ffffff', borderRadius: '24px', padding: '32px 28px', textAlign: 'center', border: '1px solid #f1f5f9', boxShadow: '0 12px 36px rgba(15,23,42,0.03)' }}>
             {/* Profile Avatar with concentric dashed ring */}
-            <div style={{ display: 'inline-block', position: 'relative', padding: '6px', borderRadius: '50%', border: '2.5px dashed #0062ff', marginBottom: '16px' }}>
-              <AvatarCircle photoURL={eleve.photoURL} prenom={eleve.prenom} nom={eleve.nom} size={64} fallbackFontSize={18} dashed />
+            <div style={{ display: 'inline-block', position: 'relative', padding: '6px', borderRadius: '50%', border: '2.5px dashed #3b82f6', marginBottom: '20px' }}>
+              <AvatarCircle photoURL={eleve.photoURL} prenom={eleve.prenom} nom={eleve.nom} size={84} fallbackFontSize={24} dashed />
             </div>
             
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#1a202c', margin: '0 0 4px' }}>
-              {eleve.prenom} {eleve.nom} <span style={{ color: '#0062ff', fontSize: '14px', fontWeight: '600' }}>({eleve.matricule})</span>
+            <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px', letterSpacing: '-0.5px' }}>
+              {eleve.prenom} {eleve.nom}
             </h3>
-            <p style={{ fontSize: '13px', color: '#718096', margin: '0 0 4px', fontWeight: '500' }}>{parentEmail}</p>
-            <p style={{ fontSize: '13px', color: '#4a5568', margin: '0 0 20px', fontWeight: '700' }}>{parentMobile}</p>
+            <div style={{ color: '#3b82f6', fontSize: '14px', fontWeight: '700', marginBottom: '8px', background: '#eff6ff', display: 'inline-block', padding: '4px 12px', borderRadius: '20px' }}>
+              Matricule: {eleve.matricule}
+            </div>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: '8px 0 24px', fontWeight: '500' }}>Parent: {fatherName}</p>
 
             {/* Personal Details list inside Bio Card */}
-            <div style={{ borderTop: '1px solid #edf2f7', paddingTop: '16px', textAlign: 'left' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '12.5px', color: '#718096', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Détails personnels</span>
-                <span style={{ fontSize: '18px', color: '#718096', cursor: 'pointer' }}>^</span>
+            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '20px', textAlign: 'left' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Détails personnels</span>
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -278,10 +279,11 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
           </div>
 
           {/* About Student Card */}
-          <div style={{ background: '#ffffff', borderRadius: '20px', padding: '24px', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: '800', color: '#1a202c', marginBottom: '8px', textTransform: 'capitalize' }}>Biographie</h4>
-            <p style={{ fontSize: '13px', color: '#718096', lineHeight: '1.6', margin: 0 }}>
-              Bonjour ! Je m'appelle {eleve.prenom || 'Jason'} et je suis élève en {eleve.classe || '11e'}. J'aime aller à l'école et apprendre de nouvelles choses chaque jour. Ma matière préférée est les maths et j'aime jouer avec mes amis.
+          <div style={{ background: '#ffffff', borderRadius: '24px', padding: '28px', border: '1px solid #f1f5f9', boxShadow: '0 12px 36px rgba(15,23,42,0.03)' }}>
+            <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Biographie</h4>
+            <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.7', margin: 0 }}>
+              Élève en {eleve.classe || 'classe non spécifiée'}, inscrit le {eleve.created_at ? new Date(eleve.created_at).toLocaleDateString('fr-FR') : '—'}. 
+              Le suivi de ses évaluations et de ses présences permet d'accompagner sa progression académique tout au long de l'année.
             </p>
           </div>
         </div>
@@ -291,23 +293,23 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
           
           {/* Top Metric Cards (Row 1) */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div style={{ background: '#ffffff', borderRadius: '20px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+            <div style={{ background: '#ffffff', borderRadius: '24px', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #f1f5f9', boxShadow: '0 12px 36px rgba(15,23,42,0.03)' }}>
               <div>
-                <span style={{ fontSize: '13px', color: '#718096', fontWeight: '600' }}>Évaluations</span>
-                <h4 style={{ fontSize: '28px', fontWeight: '800', color: '#1a202c', margin: '4px 0 0' }}>{eleve.evaluations?.length || 0}</h4>
+                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Évaluations</span>
+                <h4 style={{ fontSize: '32px', fontWeight: '800', color: '#0f172a', margin: '4px 0 0', letterSpacing: '-1px' }}>{eleve.evaluations?.length || 0}</h4>
               </div>
-              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#ebf4ff', color: '#0062ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Activity size={20} />
+              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(59,130,246,0.1)' }}>
+                <Activity size={24} strokeWidth={2.5} />
               </div>
             </div>
 
-            <div style={{ background: '#ffffff', borderRadius: '20px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #edf2f7', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+            <div style={{ background: '#ffffff', borderRadius: '24px', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #f1f5f9', boxShadow: '0 12px 36px rgba(15,23,42,0.03)' }}>
               <div>
-                <span style={{ fontSize: '13px', color: '#718096', fontWeight: '600' }}>Progression</span>
-                <h4 style={{ fontSize: '28px', fontWeight: '800', color: '#1a202c', margin: '4px 0 0' }}>{progression}%</h4>
+                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Progression</span>
+                <h4 style={{ fontSize: '32px', fontWeight: '800', color: '#0f172a', margin: '4px 0 0', letterSpacing: '-1px' }}>{progression}%</h4>
               </div>
-              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: progression >= 70 ? '#f0fdf4' : '#fff7ed', color: progression >= 70 ? '#10b981' : '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <TrendingUp size={20} />
+              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: progression >= 70 ? '#f0fdf4' : '#fff7ed', color: progression >= 70 ? '#10b981' : '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: progression >= 70 ? '0 4px 12px rgba(16,185,129,0.1)' : '0 4px 12px rgba(245,158,11,0.1)' }}>
+                <TrendingUp size={24} strokeWidth={2.5} />
               </div>
             </div>
           </div>
@@ -542,7 +544,7 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
 
       {/* Hidden Printable Bulletin for Print View */}
       <div id="printable-bulletin" style={{ display: 'none' }}>
-        <PrintableBulletin eleve={eleve} />
+        <PrintableBulletin eleve={eleve} attendance={attendance} />
       </div>
 
       {/* BulletinViewer Modal */}
@@ -571,7 +573,17 @@ export default function Eleves() {
     setLoading(true);
     try {
       const [eRes, sRes] = await Promise.all([getElevesAPI(), getSallesAPI()]);
-      setEleves(eRes.data || []);
+      const rawEleves = Array.isArray(eRes.data) ? eRes.data : [];
+      const uniqueEleves = [];
+      const seen = new Set();
+      rawEleves.forEach((el) => {
+        const key = String(el.matricule);
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueEleves.push(el);
+        }
+      });
+      setEleves(uniqueEleves);
       setSalles(sRes.data || []);
     } catch(e) { setError('Erreur: ' + (e.response?.data?.error || e.message)); }
     finally { setLoading(false); }

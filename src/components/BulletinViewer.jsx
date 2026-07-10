@@ -214,7 +214,7 @@ const BulletinViewer = ({ matricule, onClose }) => {
                   {/* Statistiques */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gridTemplateColumns: 'repeat(5, 1fr)',
                     gap: '12px',
                     marginBottom: '20px'
                   }}>
@@ -227,6 +227,28 @@ const BulletinViewer = ({ matricule, onClose }) => {
                       <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Moyenne</div>
                       <div style={{ fontSize: '22px', fontWeight: '700', color: '#3b82f6' }}>
                         {bulletinDetail.moyenneGenerale || 0}/20
+                      </div>
+                    </div>
+                    <div style={{
+                      background: 'white',
+                      padding: '16px',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Rang</div>
+                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#059669' }}>
+                        {bulletinDetail.rang || '—'}{bulletinDetail.rang === 1 ? 'er' : bulletinDetail.rang ? 'ème' : ''} <span style={{ fontSize: '13px', color: '#6b7280', fontWeight: '400' }}>/ {bulletinDetail.effectifClasse || '—'}</span>
+                      </div>
+                    </div>
+                    <div style={{
+                      background: 'white',
+                      padding: '16px',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>Moy. Classe</div>
+                      <div style={{ fontSize: '22px', fontWeight: '700', color: '#d97706' }}>
+                        {bulletinDetail.moyenneClasse || '—'}/20
                       </div>
                     </div>
                     <div style={{

@@ -42,8 +42,7 @@ const adminNavGroups = [
   {
     label: 'Système',
     items: [
-      { name: 'Paramètres', icon: Settings, path: '/settings' },
-      { name: 'Audit', icon: ClipboardList, path: '/audit' },
+      { name: 'Mon Profil', icon: UserCog, path: '/directeur/profil' },
     ],
   },
 ];
@@ -53,6 +52,7 @@ const directeurNavGroups = [
     label: 'Principal',
     items: [
       { name: 'Tableau de bord Directeur', icon: LayoutDashboard, path: '/directeur/dashboard' },
+      { name: 'Messages', icon: MessageSquare, path: '/messages' },
       { name: 'Rapports', icon: FileText, path: '/rapports' },
     ],
   },
@@ -86,6 +86,7 @@ const intendantNavGroups = [
     label: 'Trésorerie',
     items: [
       { name: 'Tableau de bord', icon: LayoutDashboard, path: '/intendant/dashboard' },
+      { name: 'Messages', icon: MessageSquare, path: '/messages' },
       { name: 'Paiements', icon: CreditCard, path: '/intendant/paiements' },
       { name: 'Tranches', icon: ClipboardList, path: '/intendant/tranches' },
     ],

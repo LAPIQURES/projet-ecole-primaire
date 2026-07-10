@@ -8,6 +8,7 @@ import {
   getSallesAPI,
   generateClassBulletinsAPI
 } from '../services/api';
+import AdminBulletinsPanel from '../components/AdminBulletinsPanel';
 
 const Bulletins = () => {
   const [loading, setLoading] = useState(false);
@@ -103,6 +104,11 @@ const Bulletins = () => {
           <p style={{ margin: 0, color: '#4b5563', lineHeight: 1.6 }}>
             Impression des bulletins pour une classe ou une salle entière. La génération de bulletins individuels a été retirée.
           </p>
+        </div>
+
+        {/* Admin panel for generating/previewing bulletins */}
+        <div style={{ marginBottom: '18px' }}>
+          <AdminBulletinsPanel />
         </div>
 
         {error && (

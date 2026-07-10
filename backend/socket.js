@@ -19,7 +19,7 @@ module.exports = {
         if (token) {
           const decoded = jwt.verify(token, config.jwt.secret);
           socket.user = decoded;
-          const identifier = String(decoded.username || decoded.id || decoded.sub || decoded.email || 'unknown');
+          const identifier = String(decoded.login || decoded.username || decoded.id || decoded.sub || decoded.email || 'unknown');
           socket.join(`user-${identifier}`);
         }
       } catch (err) {
@@ -57,7 +57,7 @@ module.exports = {
         try {
           const { idConv, content } = payload || {};
           if (!idConv || !content || !content.trim()) return;
-          const senderId = String(socket.user?.username || socket.user?.id || 'anon');
+          const senderId = String(socket.user?.login || socket.user?.username || socket.user?.id || 'anon');
           const senderNom = socket.user?.nom || socket.user?.name || senderId;
 
           const [result] = await pool.query(

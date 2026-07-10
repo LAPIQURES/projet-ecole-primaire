@@ -35,7 +35,7 @@ exports.getDisciplineEleve = async (req, res) => {
           ELSE 'Présent'
         END AS status
       FROM Frequente f
-      LEFT JOIN Eleve e ON e.matricule = f.matricule
+      LEFT JOIN Eleve e ON CAST(e.matricule AS CHAR) = f.matricule
       LEFT JOIN Salle s ON s.idSalle = f.idSalle
       WHERE 1=1
     `;
@@ -157,16 +157,18 @@ exports.getAbsenceData = async (req, res) => {
         f.created_at,
         f.commentaire,
         s.libelle AS salle,
+        cl.libelle AS classe,
         CASE 
-          WHEN f.commentaire LIKE '%absent%' OR f.commentaire LIKE '%Absent%' THEN 'Absent'
+          WHEN LOWER(COALESCE(f.commentaire, '')) LIKE '%absent%' THEN 'Absent'
           ELSE 'Présent'
         END AS status,
         COALESCE(DATE_FORMAT(f.created_at, '%Y-%m-%d'), DATE_FORMAT(CURRENT_DATE, '%Y-%m-%d')) AS date,
         MONTH(f.created_at) AS mois,
         YEAR(f.created_at) AS annee
       FROM Frequente f
-      LEFT JOIN Eleve e ON e.matricule = f.matricule
+      LEFT JOIN Eleve e ON CAST(e.matricule AS CHAR) = f.matricule
       LEFT JOIN Salle s ON s.idSalle = f.idSalle
+      LEFT JOIN Classe cl ON cl.idClasse = s.idClasse
       WHERE 1=1
     `;
     

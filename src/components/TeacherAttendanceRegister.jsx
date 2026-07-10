@@ -113,12 +113,75 @@ export default function TeacherAttendanceRegister() {
   const absent = Object.values(attendance).filter(s => s === 'absent').length;
   const present = Object.values(attendance).filter(s => s === 'present').length;
 
+  const handlePrint = () => {
+    if (!selectedClass) { alert("Sélectionnez une classe avant d'imprimer"); return; }
+    const classLabel = (classes.find(c => String(c.idClasse) === String(selectedClass)) || {}).libelle || `Classe ${selectedClass}`;
+    const absentees = students.filter(s => attendance[s.matricule] === 'absent');
+
+    const html = `<!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Fiche d'absence - ${classLabel} - ${date}</title>
+          <style>
+            body{ font-family: Arial, Helvetica, sans-serif; color:#0f172a; margin:20px }
+            .header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px }
+            h1{ font-size:20px; margin:0 }
+            .meta{ font-size:14px; color:#374151 }
+            table{ width:100%; border-collapse:collapse; margin-top:14px }
+            th, td{ border:1px solid #e6edf3; padding:8px; text-align:left }
+            th{ background:#f8fafc; font-weight:700 }
+            .empty{ color:#94a3b8; text-align:center; padding:18px }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>Fiche d'absence</h1>
+              <div class="meta">Classe: <strong>${classLabel}</strong></div>
+              <div class="meta">Date: <strong>${date}</strong></div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;color:#64748b">Plateforme École - Gestion Académique</div>
+            </div>
+          </div>
+          ${absentees.length === 0 ? `<div class="empty">Aucun élève absent pour cette date.</div>` : `
+            <table>
+              <thead>
+                <tr><th>#</th><th>Nom & Prénom</th><th>Matricule</th><th>Commentaire</th></tr>
+              </thead>
+              <tbody>
+                ${absentees.map((a, idx) => `
+                  <tr>
+                    <td>${idx + 1}</td>
+                    <td>${(a.nom || '') + ' ' + (a.prenom || '')}</td>
+                    <td>${a.matricule}</td>
+                    <td>Absent</td>
+                  </tr>
+                `).join('\n')}
+              </tbody>
+            </table>
+          `}
+        </body>
+      </html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) { alert("Impossible d'ouvrir la fenêtre d'impression (popup bloquée ?)"); return; }
+    w.document.open('text/html', 'replace');
+    w.document.write(html);
+    w.document.close();
+    w.onload = () => {
+      w.focus();
+      setTimeout(() => { w.print(); }, 100);
+    };
+  };
+
   return (
     <div style={s.page}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'28px' }}>
         <h1 style={{ fontSize:'24px', fontWeight:'700', color:'#0f172a', margin:0 }}>📋 Cahier d'Appel</h1>
         <div style={{ display:'flex', gap:'8px' }}>
-          <button style={s.btn('secondary')} onClick={() => window.print()}><Printer size={16} /> Imprimer</button>
+          <button style={s.btn('secondary')} onClick={() => handlePrint()}><Printer size={16} /> Imprimer</button>
           <button style={s.btn('success')} onClick={saveAttendance} disabled={loading}><Save size={16} /> {loading ? 'Enregistrement...' : 'Enregistrer'}</button>
         </div>
       </div>

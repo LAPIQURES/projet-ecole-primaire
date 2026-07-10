@@ -24,18 +24,42 @@ exports.getEleves = async (req, res) => {
         s.libelle AS salle, s.idSalle, s.position AS sallePosition,
         c.libelle AS classe, c.idClasse,
         cy.libelle AS cycle,
-        p.nom AS parentNom, p.prenom AS parentPrenom, p.mobile AS parentMobile
+        parent_info.parentNom, parent_info.parentPrenom, parent_info.parentMobile
       FROM Eleve e
-      LEFT JOIN Frequente f ON f.matricule = e.matricule
+      LEFT JOIN (
+        SELECT f1.* FROM Frequente f1
+        JOIN (
+          SELECT matricule, MAX(created_at) AS latest_created_at
+          FROM Frequente
+          GROUP BY matricule
+        ) f2 ON f1.matricule = f2.matricule AND f1.created_at = f2.latest_created_at
+      ) f ON f.matricule = e.matricule
       LEFT JOIN Salle s ON s.idSalle = f.idSalle
       LEFT JOIN Classe c ON c.idClasse = s.idClasse
       LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
-      LEFT JOIN Parents pr ON pr.matricule = e.matricule
-      LEFT JOIN Personne p ON p.idPers = pr.idPers
+      LEFT JOIN (
+        SELECT pr.matricule,
+          MAX(p.nom) AS parentNom,
+          MAX(p.prenom) AS parentPrenom,
+          MAX(p.mobile) AS parentMobile
+        FROM Parents pr
+        JOIN Personne p ON p.idPers = pr.idPers
+        GROUP BY pr.matricule
+      ) parent_info ON parent_info.matricule = e.matricule
       ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
       ORDER BY e.created_at DESC LIMIT 500
     `, params);
-    res.json(rows);
+
+    const uniqueRows = [];
+    const seenMatricules = new Set();
+    for (const row of rows) {
+      if (!seenMatricules.has(String(row.matricule))) {
+        seenMatricules.add(String(row.matricule));
+        uniqueRows.push(row);
+      }
+    }
+
+    res.json(uniqueRows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -172,13 +196,13 @@ exports.createRapport = async (req, res) => {
   try {
     const { id } = req.params;
     const { libelle, points, commentaire, event_date } = req.body;
-    const idPers = req.user?.id || 1000;
+    const idPers = req.user?.id || null; // null utilise la valeur par défaut (0)
     const [annees] = await pool.query('SELECT idAnnee FROM AnneeAcademique ORDER BY created_at DESC LIMIT 1');
     const idAca = annees[0]?.idAnnee || 1;
     const [result] = await pool.query(
       `INSERT INTO Rapport (libelle, points, matricule, idAca, commentaire, event_date, idPers, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
-      [libelle, points || 0, id, idAca, commentaire || '', event_date || new Date().toISOString().split('T')[0], idPers]
+      [libelle, points || 0, id, idAca, commentaire || '', event_date || new Date().toISOString().split('T')[0], idPers || null]
     );
     res.status(201).json({ idRap: result.insertId, message: 'Rapport créé' });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -260,15 +284,14 @@ exports.markAttendance = async (req, res) => {
       return res.status(400).json({ error: 'matricule requis' });
     }
 
-    const matriculeInt = typeof matricule === 'string'
-      ? parseInt(matricule.replace(/\D/g, ''), 10) || parseInt(matricule, 10)
-      : parseInt(matricule, 10);
+    // Keep matricule as string to avoid truncation/parse issues (may contain non-digits)
+    const matriculeFinal = String(matricule).trim();
     let finalIdSalle = idSalle ? parseInt(idSalle, 10) : null;
 
     if (!finalIdSalle) {
       const [prev] = await pool.query(
         'SELECT idSalle FROM Frequente WHERE matricule = ? AND idSalle IS NOT NULL ORDER BY created_at DESC LIMIT 1',
-        [matriculeInt]
+        [matriculeFinal]
       );
       if (prev.length > 0) {
         finalIdSalle = prev[0].idSalle;
@@ -286,7 +309,7 @@ exports.markAttendance = async (req, res) => {
     const [result] = await pool.query(`
       INSERT INTO Frequente (matricule, idSalle, idAcademi, commentaire, idAdmin, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
-    `, [matriculeInt, finalIdSalle, idAcademi, commentaire || 'RAS', idAdmin, createdAt]);
+    `, [matriculeFinal, finalIdSalle, idAcademi, commentaire || 'RAS', idAdmin, createdAt]);
 
     res.status(201).json({
       idFrequente: result.insertId,

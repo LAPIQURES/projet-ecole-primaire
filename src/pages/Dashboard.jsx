@@ -412,6 +412,8 @@ export default function Dashboard() {
             <MessageSquare size={20} />
             <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: BLUE, width: '6px', height: '6px', borderRadius: '50%' }} />
           </div>
+
+          {/* Bulletin generation panel was moved to the Bulletins page */}
           <div
             style={{ position: 'relative', cursor: 'pointer', color: '#64748b' }}
             onClick={() => navigate('/settings')}

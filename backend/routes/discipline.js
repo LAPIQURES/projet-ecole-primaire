@@ -20,7 +20,7 @@ router.get('/summary', disciplineController.getDisciplineSummary);
 router.get('/stats', disciplineController.getDisciplineStats);
 
 // Get absence data for admin dashboard or parent dashboard
-router.get('/absences/list', verifyToken, verifyParent, disciplineController.getAbsenceData);
+router.get('/absences/list', verifyToken, disciplineController.getAbsenceData);
 
 // Mettre à jour un problème de discipline
 router.put('/:id', verifyAdmin, disciplineController.updateDisciplineLog);

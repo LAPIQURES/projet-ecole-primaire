@@ -7,6 +7,8 @@ import { MessageSquare, Send, Search, Mail, CheckCheck, Users, GraduationCap, X 
 const roleLabel = {
   admin: 'Administration',
   superadmin: 'Administration',
+  directeur: 'Directeur',
+  intendant: 'Intendant',
   enseignant: 'Enseignant',
   parent: 'Parent',
   group: 'Groupe',
@@ -15,6 +17,8 @@ const roleLabel = {
 const roleIcon = {
   admin: GraduationCap,
   superadmin: GraduationCap,
+  directeur: GraduationCap,
+  intendant: Users,
   enseignant: Users,
   parent: Mail,
   group: Users,
@@ -25,8 +29,8 @@ const getUserIdentity = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     return {
       role: user.role === 'superadmin' ? 'admin' : (user.role || 'enseignant'),
-      identifier: String(user.username || user.id || ''),
-      label: user.nom || user.prenom || user.username || 'Utilisateur',
+      identifier: String(user.login || user.username || user.id || ''),
+      label: user.nom || user.prenom || user.login || user.username || 'Utilisateur',
     };
   } catch {
     return { role: 'enseignant', identifier: '', label: 'Utilisateur' };
@@ -130,6 +134,22 @@ export default function TeacherMessages() {
     };
     loadGroupHistory();
   }, [selectedContact]);
+
+  useEffect(() => {
+    if (selectedContact && selectedContact.role !== 'group') {
+      const unreadIds = messages
+        .filter(m => !m.isRead && m.receiverRole === me.role && String(m.receiverId) === String(me.identifier) && m.senderRole === selectedContact.role && String(m.senderId) === String(selectedContact.identifier))
+        .map(m => m.idMessage || m.idMessages);
+
+      if (unreadIds.length > 0) {
+        markConversationReadAPI({ messageIds: unreadIds })
+          .then(() => {
+            setMessages(prev => prev.map(m => unreadIds.includes(m.idMessage || m.idMessages) ? { ...m, isRead: 1 } : m));
+          })
+          .catch(console.error);
+      }
+    }
+  }, [messages, selectedContact, me]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -248,6 +268,7 @@ export default function TeacherMessages() {
               filteredContacts.map((contact) => {
                 const Icon = roleIcon[contact.role] || Users;
                 const active = selectedContact?.identifier === contact.identifier && selectedContact?.role === contact.role;
+                const unreadCount = messages.filter(m => !m.isRead && m.receiverRole === me.role && String(m.receiverId) === String(me.identifier) && m.senderRole === contact.role && String(m.senderId) === String(contact.identifier)).length;
                 return (
                   <button
                     key={`${contact.role}-${contact.identifier}`}
@@ -268,10 +289,17 @@ export default function TeacherMessages() {
                     <div style={{ width: 38, height: 38, borderRadius: '50%', background: active ? '#2563eb' : '#e2e8f0', color: active ? '#fff' : '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <Icon size={17} />
                     </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contact.label}</div>
-                      <div style={{ fontSize: 11, color: '#64748b', textTransform: 'capitalize' }}>{roleLabel[contact.role] || contact.role}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, color: active ? '#1e3a8a' : '#0f172a', fontSize: 13, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {contact.label}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b' }}>{roleLabel[contact.role] || contact.role}</div>
                     </div>
+                    {unreadCount > 0 && (
+                      <div style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>
+                        {unreadCount}
+                      </div>
+                    )}
                   </button>
                 );
               })

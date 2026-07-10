@@ -8,7 +8,7 @@ const normalizeRole = (role) => {
   return role || 'admin';
 };
 
-const getUserKey = (user) => String(user?.username || user?.id || '');
+const getUserKey = (user) => String(user?.login || user?.username || user?.id || '');
 
 const getCurrentUserLabel = async (user) => {
   const role = normalizeRole(user?.role);
@@ -16,32 +16,32 @@ const getCurrentUserLabel = async (user) => {
 
   try {
     if (role === 'admin') {
-      const [rows] = await pool.query('SELECT nom, username FROM Admin WHERE username = ? LIMIT 1', [identifier]);
-      if (rows.length) return rows[0].nom || rows[0].username || identifier;
+      const [rows] = await pool.query('SELECT nom, username, login FROM Admin WHERE username = ? OR login = ? LIMIT 1', [identifier, identifier]);
+      if (rows.length) return rows[0].nom || rows[0].username || rows[0].login || identifier;
     }
 
     if (role === 'enseignant') {
       const [rows] = await pool.query(
-        `SELECT p.nom, p.prenom, p.username
+        `SELECT p.nom, p.prenom, p.username, p.login
          FROM Enseignant en
          JOIN Personne p ON p.idPers = en.idPers
-         WHERE p.username = ? LIMIT 1`,
-        [identifier]
+         WHERE p.username = ? OR p.login = ? LIMIT 1`,
+        [identifier, identifier]
       );
-      if (rows.length) return `${rows[0].prenom || ''} ${rows[0].nom || ''}`.trim() || rows[0].username || identifier;
+      if (rows.length) return `${rows[0].prenom || ''} ${rows[0].nom || ''}`.trim() || rows[0].username || rows[0].login || identifier;
     }
 
     if (role === 'parent') {
       const personneCols = await getTableColumns('Personne');
-      const parentSelect = selectColumns('p', personneCols, ['nom', 'prenom', 'username']);
+      const parentSelect = selectColumns('p', personneCols, ['nom', 'prenom', 'username', 'login']);
       const [rows] = await pool.query(
         `SELECT ${parentSelect}
          FROM Parents pr
          JOIN Personne p ON p.idPers = pr.idPers
-         WHERE p.username = ? LIMIT 1`,
-        [identifier]
+         WHERE p.username = ? OR p.login = ? LIMIT 1`,
+        [identifier, identifier]
       );
-      if (rows.length) return `${rows[0].prenom || ''} ${rows[0].nom || ''}`.trim() || rows[0].username || identifier;
+      if (rows.length) return `${rows[0].prenom || ''} ${rows[0].nom || ''}`.trim() || rows[0].username || rows[0].login || identifier;
     }
   } catch (error) {
     console.error('Erreur getCurrentUserLabel:', error.message);
@@ -75,6 +75,10 @@ const ensureMessagesSchema = async () => {
   addColumn('isRead', 'isRead TINYINT(1) NOT NULL DEFAULT 0 AFTER valider');
   addColumn('readAt', 'readAt DATETIME NULL AFTER isRead');
   addColumn('updated_at', 'updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER readAt');
+
+  // Make legacy columns nullable
+  statements.push('ALTER TABLE Messages MODIFY idParent INT UNSIGNED NULL');
+  statements.push('ALTER TABLE Messages MODIFY idExp_Pers INT UNSIGNED NULL');
 
   for (const statement of statements) {
     await pool.query(statement);
@@ -241,10 +245,11 @@ exports.getContacts = async (req, res) => {
         `SELECT
           username AS identifier,
           CASE WHEN COALESCE(nom, '') = '' THEN username ELSE nom END AS label,
-          'admin' AS role,
+          CASE typeAdmin WHEN 1 THEN 'superadmin' WHEN 2 THEN 'admin' WHEN 5 THEN 'directeur' WHEN 6 THEN 'intendant' ELSE 'admin' END AS role,
           CONCAT(
             CASE WHEN COALESCE(nom, '') = '' THEN username ELSE nom END,
-            ' · Admin'
+            ' · ',
+            CASE typeAdmin WHEN 1 THEN 'SuperAdmin' WHEN 2 THEN 'Admin' WHEN 5 THEN 'Directeur' WHEN 6 THEN 'Intendant' ELSE 'Staff' END
           ) AS displayLabel
          FROM Admin
          WHERE actif = 1 AND username IS NOT NULL AND username <> '' AND username <> ?
@@ -253,19 +258,19 @@ exports.getContacts = async (req, res) => {
       ),
       pool.query(
         `SELECT
-          p.username AS identifier,
+          COALESCE(p.username, p.login) AS identifier,
           TRIM(CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''))) AS label,
           'enseignant' AS role,
           CONCAT(TRIM(CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''))), ' · Enseignant') AS displayLabel
          FROM Enseignant en
          JOIN Personne p ON p.idPers = en.idPers
-         WHERE en.Actif = 1 AND COALESCE(p.username, '') <> '' AND p.username <> ?
+         WHERE en.Actif = 1 AND COALESCE(p.username, p.login, '') <> '' AND COALESCE(p.username, p.login) <> ?
          ORDER BY p.prenom, p.nom`,
         [currentIdentifier]
       ),
       pool.query(
         `SELECT
-          ${parentIdentifierExpr},
+          COALESCE(NULLIF(p.username, ''), NULLIF(p.login, ''), CONCAT('parent-', pr.idParent)) AS identifier,
           TRIM(CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''))) AS label,
           'parent' AS role,
           CONCAT(TRIM(CONCAT(COALESCE(p.prenom, ''), ' ', COALESCE(p.nom, ''))), ' · Parent') AS displayLabel,
@@ -273,9 +278,9 @@ exports.getContacts = async (req, res) => {
          FROM Parents pr
          JOIN Personne p ON p.idPers = pr.idPers
          LEFT JOIN Eleve e ON e.matricule = pr.matricule
-         WHERE ${parentWhereExpr}
+         WHERE 1=1
          ORDER BY p.prenom, p.nom`,
-        personneCols.has('username') ? [currentIdentifier] : []
+        []
       )
     ]);
 

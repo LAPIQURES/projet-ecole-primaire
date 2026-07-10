@@ -1,7 +1,7 @@
 import React from 'react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const PrintableBulletin = ({ eleve }) => {
+const PrintableBulletin = ({ eleve, attendance = [] }) => {
   if (!eleve) return null;
 
   // Calcul de la progression basé sur les vraies notes
@@ -48,13 +48,18 @@ const PrintableBulletin = ({ eleve }) => {
     ? `${eleve.parents[1].prenom} ${eleve.parents[1].nom}`
     : 'Non spécifié';
 
-  // Attendance stats
-  const attendanceData = [
-    { name: 'Présent', value: 72, color: '#0062ff' },
-    { name: 'Demi-journée', value: 15, color: '#7fb0ff' },
-    { name: 'Retard', value: 8, color: '#ffa000' },
-    { name: 'Absent', value: 5, color: '#ffb74d' }
-  ];
+  // Attendance stats based on real data
+  let attendanceData = [];
+  if (attendance && attendance.length > 0) {
+    const presentCount = attendance.filter((a) => a.status === 'Présent').length;
+    const absentCount = attendance.filter((a) => a.status === 'Absent').length;
+    const total = attendance.length;
+    
+    if (presentCount > 0) attendanceData.push({ name: 'Présent', value: Math.round((presentCount/total)*100), color: '#0062ff' });
+    if (absentCount > 0) attendanceData.push({ name: 'Absent', value: Math.round((absentCount/total)*100), color: '#ffb74d' });
+  } else {
+    attendanceData = [{ name: 'Aucune donnée', value: 100, color: '#e2e8f0' }];
+  }
 
   return (
     <div style={{ 
