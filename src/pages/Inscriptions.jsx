@@ -30,7 +30,7 @@ const inp = {
   background: '#fff',
 };
 
-const EMPTY_FORM = { matricule: '', idSalle: '', idAcademi: '', commentaire: '' };
+const EMPTY_FORM = { matricule: '', idClasse: '', idAcademi: '', commentaire: '' };
 
 const badge = (active, color) => ({
   display: 'inline-flex',
@@ -138,7 +138,7 @@ export default function Inscriptions() {
   const openEdit = (ins) => {
     setFormData({
       matricule: ins.matricule || ins.matriculeEleve || '',
-      idSalle: ins.idSalle || '',
+      idClasse: ins.idClasse || '',
       idAcademi: ins.idAcademi || ins.idAnnee || '',
       commentaire: ins.commentaire || '',
     });
@@ -149,18 +149,25 @@ export default function Inscriptions() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.matricule || !formData.idSalle || !formData.idAcademi) {
+    if (!formData.matricule || !formData.idClasse || !formData.idAcademi) {
       setError('Tous les champs marqués * sont obligatoires');
       return;
     }
     setSaving(true);
     setError('');
     try {
+      const payload = {
+        matricule: formData.matricule,
+        idClasse: formData.idClasse,
+        idAcademi: formData.idAcademi,
+        commentaire: formData.commentaire || '',
+      };
+
       if (editingId) {
-        await updateInscriptionAPI(editingId, formData);
+        await updateInscriptionAPI(editingId, payload);
         setSuccess('Inscription modifiée !');
       } else {
-        await createInscriptionAPI(formData);
+        await createInscriptionAPI(payload);
         setSuccess('Inscription ajoutée !');
       }
       setShowForm(false);
@@ -564,12 +571,12 @@ export default function Inscriptions() {
               </div>
 
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontSize: 12, fontWeight: 900, color: '#475569', display: 'block', marginBottom: 6 }}>Classe / Salle *</label>
-                <select value={formData.idSalle} onChange={(e) => setFormData({ ...formData, idSalle: e.target.value })} style={inp}>
-                  <option value="">-- Sélectionner une salle --</option>
-                  {salles.map((s) => (
-                    <option key={s.idSalle} value={s.idSalle}>
-                      {s.libelle}{s.classe ? ` (${s.classe})` : ''}
+                <label style={{ fontSize: 12, fontWeight: 900, color: '#475569', display: 'block', marginBottom: 6 }}>Classe *</label>
+                <select value={formData.idClasse} onChange={(e) => setFormData({ ...formData, idClasse: e.target.value })} style={inp}>
+                  <option value="">-- Sélectionner une classe --</option>
+                  {classes.map((c) => (
+                    <option key={c.idClasse} value={c.idClasse}>
+                      {c.libelle}{c.salle ? ` (${c.salle})` : ''}
                     </option>
                   ))}
                 </select>

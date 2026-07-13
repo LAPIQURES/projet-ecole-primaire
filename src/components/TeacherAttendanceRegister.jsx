@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Calendar, Save, Printer, Search, ChevronDown } from 'lucide-react';
-import API, { getTeacherStudentsAPI } from '../services/api';
+import API, { getElevesAPI, getTeacherStudentsAPI } from '../services/api';
 
 const s = {
   page: { background:'#f8fafc', minHeight:'100vh', padding:'24px', fontFamily:"'Segoe UI',sans-serif" },
@@ -32,8 +32,9 @@ export default function TeacherAttendanceRegister() {
 
   const timeSlots = [
     'Toute la journée',
-    '08h00 - 10h00',
-    '10h00 - 12h00',
+    '07h00 - 09h00',
+    '09h00 - 11h00',
+    '11h00 - 13h00',
     '13h00 - 15h00',
     '15h00 - 17h00'
   ];
@@ -60,15 +61,17 @@ export default function TeacherAttendanceRegister() {
 
   const loadStudents = async (idClasse, targetDate = date, targetTimeSlot = timeSlot) => {
     try {
-      const response = await getTeacherStudentsAPI();
-      const allStudents = Array.isArray(response.data) ? response.data : [];
-      const selectedClassObj = classes.find((c) => String(c.idClasse) === String(idClasse));
-      const classStudents = selectedClassObj
-        ? allStudents.filter((s) => String(s.idClasse) === String(idClasse) || String(s.classe) === String(selectedClassObj.libelle))
-        : allStudents;
+      let classStudents = [];
+      if (idClasse) {
+        const response = await getElevesAPI({ classe: idClasse });
+        classStudents = Array.isArray(response.data) ? response.data : [];
+      } else {
+        const response = await getTeacherStudentsAPI();
+        classStudents = Array.isArray(response.data) ? response.data : [];
+      }
+
       setStudents(classStudents);
       
-      // Fetch existing attendance for this date
       try {
         const absRes = await API.get('/discipline/absences/list', { params: { date: targetDate } });
         const records = absRes.data || [];
@@ -78,11 +81,7 @@ export default function TeacherAttendanceRegister() {
             String(r.matricule) === String(s.matricule) && 
             (targetTimeSlot === 'Toute la journée' || r.commentaire?.includes(targetTimeSlot))
           );
-          if (record && record.status === 'Absent') {
-            init[s.matricule] = 'absent';
-          } else {
-            init[s.matricule] = 'present';
-          }
+          init[s.matricule] = record && record.status === 'Absent' ? 'absent' : 'present';
         });
         setAttendance(init);
       } catch (err) {

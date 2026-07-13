@@ -25,10 +25,10 @@ async function seed() {
       ['3ème B', 2, 1]
     ]]);
 
-    const [salleRows] = await pool.query('INSERT INTO Salle (libelle, position, surface, idClasse, actif, idAdmin) VALUES ?',[ [
-      ['Salle 101', 'Nord', '50m2', 1, 1, 1],
-      ['Salle 102', 'Est', '45m2', 2, 1, 1],
-      ['Salle 201', 'Ouest', '55m2', 3, 1, 1]
+    const [salleRows] = await pool.query('INSERT INTO Salle (libelle, position, surface, actif, idAdmin) VALUES ?',[ [
+      ['Salle 101', 'Nord', '50m2', 1, 1],
+      ['Salle 102', 'Est', '45m2', 1, 1],
+      ['Salle 201', 'Ouest', '55m2', 1, 1]
     ]]);
 
     const [bookRows] = await pool.query('INSERT INTO Specialite (libelle, idAdmin) VALUES ?',[ [
@@ -81,7 +81,7 @@ async function seed() {
       ['E1010', 'Ciss', 'Moussa', '2011-06-30', 'Dakar', 1, 'Francais', '', 1, 1, 1]
     ]]);
 
-    const [freqRows] = await pool.query('INSERT INTO Frequente (idSalle, idAcademi, matricule, commentaire, idAdmin) VALUES ?',[ [
+    const [freqRows] = await pool.query('INSERT INTO Frequente (idClasse, idAcademi, matricule, commentaire, idAdmin) VALUES ?',[ [
       [1, 1, 'E1001', 'Inscrit 6ème', 1],
       [1, 1, 'E1002', 'Inscrit 6ème', 1],
       [2, 1, 'E1003', 'Inscrit 5ème', 1],

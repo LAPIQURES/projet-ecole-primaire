@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Edit2, Trash2, Search, Building2, X, RefreshCw, AlertCircle, School } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { getSallesAPI, createSalleAPI, updateSalleAPI, deleteSalleAPI, getClassesAPI } from '../services/api';
+import { getSallesAPI, createSalleAPI, updateSalleAPI, deleteSalleAPI } from '../services/api';
 
 const BLUE = '#0062ff';
 const ORANGE = '#ffa000';
@@ -20,11 +20,11 @@ const inp = {
   background: '#fff',
 };
 
-const EMPTY_FORM = { libelle: '', idClasse: '', capacite: '', position: '', surface: '', actif: 1 };
+const EMPTY_FORM = { libelle: '', capacite: '', position: '', surface: '', actif: 1 };
 
 export default function Salles() {
   const [salles, setSalles] = useState([]);
-  const [classes, setClasses] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -43,9 +43,8 @@ export default function Salles() {
     setLoading(true);
     setError('');
     try {
-      const [sRes, cRes] = await Promise.all([getSallesAPI(), getClassesAPI()]);
+      const sRes = await getSallesAPI();
       setSalles(Array.isArray(sRes.data) ? sRes.data : []);
-      setClasses(Array.isArray(cRes.data) ? cRes.data : []);
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Erreur de chargement');
     } finally {
@@ -63,7 +62,6 @@ export default function Salles() {
   const openEdit = (salle) => {
     setFormData({
       libelle: salle.libelle || '',
-      idClasse: salle.idClasse || '',
       capacite: salle.capacite ?? '',
       position: salle.position || '',
       surface: salle.surface ?? '',
@@ -88,7 +86,6 @@ export default function Salles() {
       const payload = {
         libelle: formData.libelle,
         capacite: formData.capacite === '' ? null : Number(formData.capacite),
-        idClasse: formData.idClasse || null,
         position: formData.position || '',
         surface: formData.surface === '' ? null : Number(formData.surface),
         actif: formData.actif === 0 ? 0 : 1,
@@ -124,7 +121,7 @@ export default function Salles() {
 
   const filtered = useMemo(() => {
     return salles.filter((s) => {
-      const txt = `${s.idSalle || ''} ${s.libelle || ''} ${s.capacite || ''} ${s.position || ''} ${s.surface || ''} ${s.classe || ''} ${s.actif ?? ''} ${s.idAdmin ?? ''}`.toLowerCase();
+      const txt = `${s.idSalle || ''} ${s.libelle || ''} ${s.capacite || ''} ${s.position || ''} ${s.surface || ''} ${s.actif ?? ''} ${s.idAdmin ?? ''}`.toLowerCase();
       return txt.includes(search.toLowerCase());
     });
   }, [salles, search]);
@@ -197,7 +194,7 @@ export default function Salles() {
         <div className="card" style={{ padding: 16, transition: 'box-shadow 180ms ease', minWidth: 0, maxHeight: 280, overflow: 'auto' }}>
           <div style={{ fontSize: 13, fontWeight: 950, color: '#0f172a', marginBottom: 8 }}>Champs affichés</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {['ID', 'Libellé', 'Capacité', 'Classe', 'Position', 'Surface', 'Statut', 'Créée le'].map((t) => (
+            {['ID', 'Libellé', 'Capacité', 'Position', 'Surface', 'Statut', 'Créée le'].map((t) => (
               <span key={t} style={{ padding: '6px 10px', borderRadius: 999, background: '#f1f5f9', color: '#475569', fontSize: 12, border: '1px solid #e2e8f0' }}>
                 {t}
               </span>
@@ -212,7 +209,7 @@ export default function Salles() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 950, color: '#0f172a' }}>{editingId ? 'Modifier la salle' : 'Nouvelle salle'}</div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Libellé, capacité, classe, position, surface, actif</div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Libellé, capacité, position, surface, actif</div>
               </div>
               <button onClick={() => setShowForm(false)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', width: 36, height: 36, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}><X size={16} /></button>
             </div>
@@ -234,16 +231,7 @@ export default function Salles() {
                   <label style={{ fontSize: 12, fontWeight: 900, color: '#475569', display: 'block', marginBottom: 6 }}>Capacité</label>
                   <input type="number" min={0} placeholder="Ex: 30" value={formData.capacite} onChange={(e) => setFormData({ ...formData, capacite: e.target.value })} style={inp} />
                 </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 900, color: '#475569', display: 'block', marginBottom: 6 }}>Classe</label>
-                  <select value={formData.idClasse} onChange={(e) => setFormData({ ...formData, idClasse: e.target.value })} style={inp}>
-                    <option value="">-- Aucune classe --</option>
-                    {classes.map((c) => (
-                      <option key={c.idClasse} value={c.idClasse}>{c.libelle}</option>
-                    ))}
-                  </select>
                 </div>
-              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
@@ -287,7 +275,7 @@ export default function Salles() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  {['ID', 'Libellé', 'Capacité', 'Classe', 'Position', 'Surface', 'Statut', 'Créée le', 'Admin', 'Actions'].map((h) => (
+                  {['ID', 'Libellé', 'Capacité', 'Position', 'Surface', 'Statut', 'Créée le', 'Admin', 'Actions'].map((h) => (
                     <th key={h} style={{ padding: '12px 16px', textAlign: h === 'Actions' ? 'center' : 'left', fontSize: 11, fontWeight: 950, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -308,7 +296,7 @@ export default function Salles() {
                         </div>
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: BLUE, fontWeight: 950 }}>{salle.capacite ?? '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>{salle.classe || '—'}</td>
+
                       <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>{salle.position || '—'}</td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>{salle.surface ?? '—'}</td>
                       <td style={{ padding: '12px 16px' }}>

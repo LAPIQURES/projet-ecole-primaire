@@ -40,8 +40,8 @@ exports.getParentById = async (req, res) => {
       FROM ParentEleve pe
       JOIN Eleve e ON e.matricule = pe.matricule
       LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe c ON c.idClasse = s.idClasse
+        LEFT JOIN Classe c ON c.idClasse = f.idClasse
+        LEFT JOIN Salle s ON s.idSalle = c.idSalle
       LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
       WHERE pe.idPers = ?
       ORDER BY e.nom, e.prenom`, [parent.idPers]);
@@ -190,8 +190,8 @@ exports.updateParent = async (req, res) => {
       FROM ParentEleve pe
       JOIN Eleve e ON e.matricule = pe.matricule
       LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe c ON c.idClasse = s.idClasse
+        LEFT JOIN Classe c ON c.idClasse = f.idClasse
+        LEFT JOIN Salle s ON s.idSalle = c.idSalle
       LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
       WHERE pe.idPers = ?
       ORDER BY e.nom, e.prenom`, [parent[0].idPers]);
@@ -249,7 +249,8 @@ exports.searchEleves = async (req, res) => {
       SELECT e.matricule, e.nom, e.prenom, s.libelle AS salle
       FROM Eleve e
       LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
+      LEFT JOIN Classe cl ON cl.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = cl.idSalle
       WHERE e.actif = 1 AND (e.nom LIKE ? OR e.prenom LIKE ? OR e.matricule LIKE ?)
       LIMIT 20`, [`%${q}%`, `%${q}%`, `%${q}%`]);
     res.json(rows);

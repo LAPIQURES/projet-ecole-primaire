@@ -51,7 +51,7 @@ export default function DashboardEnseignant() {
         messages: teacherMessages.length,
       });
       setAgenda((teacher?.calendrier || []).slice(0, 3).map((item, idx) => ({
-        time: item.heure || item.startTime || ['08:00', '10:00', '14:00'][idx] || '—',
+        time: item.heure || item.startTime || ['07:00', '09:00', '14:00'][idx] || '—',
         title: item.libelleCours || item.cours || item.subject || item.libelle || `Cours ${idx + 1}`,
         room: item.libelleSalle || item.salle || 'Salle',
         color: ['#10b981', '#3b82f6', '#8b5cf6'][idx % 3],

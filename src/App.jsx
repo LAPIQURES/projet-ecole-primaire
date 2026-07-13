@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -117,6 +117,16 @@ function HomeRedirect() {
 }
 
 export default function App() {
+  // Auto-initialize dev token if not already set (development only)
+  useEffect(() => {
+    if (!localStorage.getItem('token')) {
+      const devToken = 'dev:admin:1';
+      localStorage.setItem('token', devToken);
+      localStorage.setItem('user', JSON.stringify({ id: 1, role: 'admin', login: 'admin' }));
+      console.log('🔐 Dev token initialized:', devToken);
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <NotificationManager />

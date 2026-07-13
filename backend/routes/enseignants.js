@@ -39,7 +39,7 @@ router.get('/me/courses', verifyEnseignant, async (req, res) => {
        LEFT JOIN Classe cl ON cl.idClasse = c.idClasse
        LEFT JOIN Salle s ON s.idSalle = c.idSalle
        LEFT JOIN EmploiDuTemps e ON e.idCours = c.idCours
-       LEFT JOIN Frequente f ON f.idSalle = s.idSalle
+        LEFT JOIN Frequente f ON f.idClasse = cl.idClasse
        ${filter.clause}
        GROUP BY c.idCours, c.libelle, c.heures, cl.idClasse, cl.libelle, s.idSalle, s.libelle
        ORDER BY cl.libelle, c.libelle`,
@@ -88,12 +88,11 @@ router.get('/me/students', verifyEnseignant, async (req, res) => {
         s.idSalle, s.libelle AS libelleSalle
        FROM Eleve e
        INNER JOIN Frequente f ON f.matricule = e.matricule
-       INNER JOIN Salle s ON s.idSalle = f.idSalle
-       LEFT JOIN Classe cl ON cl.idClasse = s.idClasse
-       WHERE s.idSalle IN (
-         SELECT DISTINCT s2.idSalle
+       INNER JOIN Classe cl ON cl.idClasse = f.idClasse
+       LEFT JOIN Salle s ON s.idSalle = cl.idSalle
+       WHERE f.idClasse IN (
+         SELECT DISTINCT c.idClasse
          FROM Cours c
-         LEFT JOIN Salle s2 ON s2.idSalle = c.idSalle
          ${filter.clause}
        )
        ORDER BY cl.libelle, e.nom, e.prenom`,
@@ -111,8 +110,7 @@ router.get('/me/classes-salles', verifyEnseignant, async (req, res) => {
     const [classes] = await pool.query(
       `SELECT DISTINCT cl.idClasse, cl.libelle
        FROM Classe cl
-       INNER JOIN Salle s ON s.idClasse = cl.idClasse
-       INNER JOIN Cours c ON c.idSalle = s.idSalle
+       INNER JOIN Cours c ON c.idClasse = cl.idClasse
        ${filter.clause}
        ORDER BY cl.libelle`,
       filter.params

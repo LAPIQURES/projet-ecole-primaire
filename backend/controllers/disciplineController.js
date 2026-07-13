@@ -36,7 +36,8 @@ exports.getDisciplineEleve = async (req, res) => {
         END AS status
       FROM Frequente f
       LEFT JOIN Eleve e ON CAST(e.matricule AS CHAR) COLLATE utf8mb4_unicode_ci = f.matricule COLLATE utf8mb4_unicode_ci
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
+      LEFT JOIN Classe cl ON cl.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = cl.idSalle
       WHERE 1=1
     `;
 
@@ -167,8 +168,8 @@ exports.getAbsenceData = async (req, res) => {
         YEAR(f.created_at) AS annee
       FROM Frequente f
       LEFT JOIN Eleve e ON CAST(e.matricule AS CHAR) COLLATE utf8mb4_unicode_ci = f.matricule COLLATE utf8mb4_unicode_ci
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe cl ON cl.idClasse = s.idClasse
+      LEFT JOIN Classe cl ON cl.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = cl.idSalle
       WHERE 1=1
     `;
     

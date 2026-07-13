@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Search, Edit2, Trash2, X, Eye, ChevronLeft, Calendar, MapPin, User, BookOpen, AlertCircle, CheckCircle, TrendingUp, TrendingDown, FileText, Activity, Bus, Heart, Shield, Mail, Phone, Printer, Share2, MessageSquare, FileCheck } from 'lucide-react';
-import { getElevesAPI, createEleveAPI, updateEleveAPI, deleteEleveAPI, getEleveByIdAPI, getSallesAPI } from '../services/api';
+import { getElevesAPI, createEleveAPI, updateEleveAPI, deleteEleveAPI, getEleveByIdAPI, getClassesAPI, getSallesAPI } from '../services/api';
 import API from '../services/api';
 import Layout from '../components/Layout';
 import { getInitials } from '../utils/avatar';
@@ -557,6 +557,7 @@ function FicheEleve({ eleve, onClose, onEdit, salles }) {
 
 export default function Eleves() {
   const [eleves, setEleves] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [salles, setSalles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -567,14 +568,14 @@ export default function Eleves() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState({ nom: '', prenom: '', sexe: '1', dateNaissance: '', lieuNaissance: '', langue: 'Francais', idSalle: '', photoURL: '' });
+  const [form, setForm] = useState({ nom: '', prenom: '', sexe: '1', dateNaissance: '', lieuNaissance: '', langue: 'Francais', idClasse: '', photoURL: '' });
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [eRes, sRes] = await Promise.all([getElevesAPI(), getSallesAPI()]);
+      const [eRes, cRes, sRes] = await Promise.all([getElevesAPI(), getClassesAPI(), getSallesAPI()]);
       const rawEleves = Array.isArray(eRes.data) ? eRes.data : [];
       const uniqueEleves = [];
       const seen = new Set();
@@ -586,13 +587,14 @@ export default function Eleves() {
         }
       });
       setEleves(uniqueEleves);
-      setSalles(sRes.data || []);
+      setClasses(Array.isArray(cRes.data) ? cRes.data : []);
+      setSalles(Array.isArray(sRes.data) ? sRes.data : []);
     } catch(e) { setError('Erreur: ' + (e.response?.data?.error || e.message)); }
     finally { setLoading(false); }
   };
 
-  const openAdd = () => { setEditing(null); setForm({ nom: '', prenom: '', sexe: '1', dateNaissance: '', lieuNaissance: '', langue: 'Francais', idSalle: '', photoURL: '' }); setError(''); setShowModal(true); };
-  const openEdit = (el) => { setEditing(el); setForm({ nom: el.nom, prenom: el.prenom, sexe: String(el.sexe || 1), dateNaissance: el.dateNaissance?.split('T')[0] || '', lieuNaissance: el.lieuNaissance || '', langue: el.langue || 'Francais', idSalle: el.idSalle || '', photoURL: el.photoURL || '' }); setError(''); setSelected(null); setShowModal(true); };
+  const openAdd = () => { setEditing(null); setForm({ nom: '', prenom: '', sexe: '1', dateNaissance: '', lieuNaissance: '', langue: 'Francais', idClasse: '', photoURL: '' }); setError(''); setShowModal(true); };
+  const openEdit = (el) => { setEditing(el); setForm({ nom: el.nom, prenom: el.prenom, sexe: String(el.sexe || 1), dateNaissance: el.dateNaissance?.split('T')[0] || '', lieuNaissance: el.lieuNaissance || '', langue: el.langue || 'Francais', idClasse: el.idClasse || '', photoURL: el.photoURL || '' }); setError(''); setSelected(null); setShowModal(true); };
 
   const openDetail = async (el) => {
     try {
@@ -651,7 +653,7 @@ export default function Eleves() {
           <div><label style={s.label}>Lieu de naissance</label><input style={s.inp} value={form.lieuNaissance} onChange={e => setForm({ ...form, lieuNaissance: e.target.value })} /></div>
           <div><label style={s.label}>Sexe</label><select style={s.inp} value={form.sexe} onChange={e => setForm({ ...form, sexe: e.target.value })}><option value="1">Masculin</option><option value="2">Féminin</option></select></div>
           <div><label style={s.label}>Langue</label><select style={s.inp} value={form.langue} onChange={e => setForm({ ...form, langue: e.target.value })}><option value="Francais">Français</option><option value="Anglais">Anglais</option><option value="Bilingue">Bilingue</option></select></div>
-          <div style={{ gridColumn: '1/-1' }}><label style={s.label}>Salle</label><select style={s.inp} value={form.idSalle} onChange={e => setForm({ ...form, idSalle: e.target.value })}><option value="">-- Sélectionner --</option>{salles.map(sl => <option key={sl.idSalle} value={sl.idSalle}>{sl.libelle} {sl.classe ? `(${sl.classe})` : ''}</option>)}</select></div>
+          <div style={{ gridColumn: '1/-1' }}><label style={s.label}>Classe</label><select style={s.inp} value={form.idClasse} onChange={e => setForm({ ...form, idClasse: e.target.value })}><option value="">-- Sélectionner --</option>{classes.map(cl => <option key={cl.idClasse} value={cl.idClasse}>{cl.libelle}</option>)}</select></div>
           <div style={{ gridColumn: '1/-1' }}><label style={s.label}>Photo URL</label><input style={s.inp} value={form.photoURL} onChange={e => setForm({ ...form, photoURL: e.target.value })} placeholder="https://exemple.com/photo.jpg" /></div>
         </div>
         {error && <div style={{ marginTop: '12px', padding: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#dc2626', fontSize: '13px' }}>{error}</div>}
@@ -754,7 +756,7 @@ export default function Eleves() {
             <div><label style={s.label}>Lieu de naissance</label><input style={s.inp} value={form.lieuNaissance} onChange={e => setForm({ ...form, lieuNaissance: e.target.value })} placeholder="Ex: Yaoundé" /></div>
             <div><label style={s.label}>Sexe</label><select style={s.inp} value={form.sexe} onChange={e => setForm({ ...form, sexe: e.target.value })}><option value="1">Masculin</option><option value="2">Féminin</option></select></div>
             <div><label style={s.label}>Langue</label><select style={s.inp} value={form.langue} onChange={e => setForm({ ...form, langue: e.target.value })}><option value="Francais">Français</option><option value="Anglais">Anglais</option><option value="Bilingue">Bilingue</option></select></div>
-            <div style={{ gridColumn: '1/-1' }}><label style={s.label}>Salle / Classe</label><select style={s.inp} value={form.idSalle} onChange={e => setForm({ ...form, idSalle: e.target.value })}><option value="">-- Sélectionner une salle --</option>{salles.map(sl => <option key={sl.idSalle} value={sl.idSalle}>{sl.libelle}{sl.classe ? ` (${sl.classe})` : ''}</option>)}</select></div>
+            <div style={{ gridColumn: '1/-1' }}><label style={s.label}>Classe</label><select style={s.inp} value={form.idClasse} onChange={e => setForm({ ...form, idClasse: e.target.value })}><option value="">-- Sélectionner une classe --</option>{classes.map(cl => <option key={cl.idClasse} value={cl.idClasse}>{cl.libelle}</option>)}</select></div>
             <div style={{ gridColumn: '1/-1' }}><label style={s.label}>Photo URL</label><input style={s.inp} value={form.photoURL} onChange={e => setForm({ ...form, photoURL: e.target.value })} placeholder="https://exemple.com/photo.jpg" /></div>
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>

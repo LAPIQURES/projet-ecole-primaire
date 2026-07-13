@@ -50,10 +50,10 @@ async function buildTeacherDetail(enseignantRow) {
        LEFT JOIN Classe cl ON cl.idClasse = c.idClasse
        LEFT JOIN Salle s ON s.idSalle = c.idSalle
        LEFT JOIN (
-         SELECT f.idSalle, COUNT(DISTINCT f.matricule) AS nbEleves
+         SELECT f.idClasse, COUNT(DISTINCT f.matricule) AS nbEleves
          FROM Frequente f
-         GROUP BY f.idSalle
-       ) nb ON nb.idSalle = c.idSalle
+         GROUP BY f.idClasse
+       ) nb ON nb.idClasse = c.idClasse
        WHERE c.idEnseignant = ? OR c.idCours = ?
        ORDER BY cl.libelle, c.libelle`,
       [teacherId, teacherCourseId]
@@ -155,7 +155,7 @@ exports.getEnseignants = async (req, res) => {
           COALESCE(SUM(c2.heures), 0) AS totalHeures
         FROM Enseignant en2
         LEFT JOIN Cours c2 ON c2.idEnseignant = en2.idEnseignant OR c2.idCours = en2.idCours
-        LEFT JOIN Frequente f ON f.idSalle = c2.idSalle
+        LEFT JOIN Frequente f ON f.idClasse = c2.idClasse
         GROUP BY en2.idEnseignant
       ) stats ON stats.idEnseignant = en.idEnseignant
       ORDER BY en.created_at DESC LIMIT 200

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { getClassesAPI, createClassAPI, updateClassAPI, deleteClassAPI } from '../services/api';
+import { getClassesAPI, getSallesAPI, createClassAPI, updateClassAPI, deleteClassAPI } from '../services/api';
 import { Plus, Edit2, Trash2, Search, School, Building2, RefreshCw, X, AlertCircle } from 'lucide-react';
 
 const BLUE = '#0062ff';
@@ -20,11 +20,12 @@ const inp = {
   background: '#fff',
 };
 
-const EMPTY_FORM = { libelle: '', idCycle: '', pension: '' };
+const EMPTY_FORM = { libelle: '', idCycle: '', idSalle: '', pension: '' };
 
 export default function Classes() {
   const [classes, setClasses] = useState([]);
   const [cycles, setCycles] = useState([]);
+  const [salles, setSalles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -43,8 +44,9 @@ export default function Classes() {
     setLoading(true);
     setError('');
     try {
-      const classesRes = await getClassesAPI();
+      const [classesRes, sallesRes] = await Promise.all([getClassesAPI(), getSallesAPI()]);
       setClasses(Array.isArray(classesRes.data) ? classesRes.data : []);
+      setSalles(Array.isArray(sallesRes.data) ? sallesRes.data : []);
 
       // Si le backend expose /classes/cycles, on l'utilise directement via fetch simple.
       try {
@@ -77,6 +79,7 @@ export default function Classes() {
     setFormData({
       libelle: classe.libelle || '',
       idCycle: classe.idCycle || '',
+      idSalle: classe.idSalle || '',
     });
     setEditingId(classe.idClasse);
     setError('');
@@ -92,11 +95,18 @@ export default function Classes() {
     setSaving(true);
     setError('');
     try {
-      if (editingId) {
-        await updateClassAPI(editingId, formData);
+      const payload = {
+      libelle: formData.libelle,
+      idCycle: formData.idCycle || null,
+      idSalle: formData.idSalle || null,
+      pension: formData.pension || null,
+    };
+
+    if (editingId) {
+        await updateClassAPI(editingId, payload);
         setSuccess('Classe mise à jour !');
       } else {
-        await createClassAPI(formData);
+        await createClassAPI(payload);
         setSuccess('Classe créée !');
       }
       setShowForm(false);
@@ -121,7 +131,7 @@ export default function Classes() {
 
   const filteredClasses = useMemo(() => {
     return classes.filter((classe) =>
-      `${classe.idClasse || ''} ${classe.libelle || ''} ${classe.niveau || ''} ${classe.cycle || ''}`.toLowerCase().includes(search.toLowerCase())
+      `${classe.idClasse || ''} ${classe.libelle || ''} ${classe.niveau || ''} ${classe.cycle || ''} ${classe.salle || ''}`.toLowerCase().includes(search.toLowerCase())
     );
   }, [classes, search]);
 
@@ -258,6 +268,15 @@ export default function Classes() {
                   ))}
                 </div>
               </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 900, color: '#475569', display: 'block', marginBottom: 6 }}>Salle</label>
+                <select value={formData.idSalle} onChange={(e) => setFormData({ ...formData, idSalle: e.target.value })} style={inp}>
+                  <option value="">-- Aucune salle --</option>
+                  {salles.map((salle) => (
+                    <option key={salle.idSalle} value={salle.idSalle}>{salle.libelle}</option>
+                  ))}
+                </select>
+              </div>
               {!editingId && (
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 900, color: '#475569', display: 'block', marginBottom: 6 }}>Prix de la scolarité (FCFA)</label>
@@ -288,7 +307,7 @@ export default function Classes() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  {['ID', 'Libellé', 'Niveau', 'Nb élèves', 'Enseignant', 'Salles', 'Actions'].map((h) => (
+                  {['ID', 'Libellé', 'Niveau', 'Nb élèves', 'Enseignant', 'Salle', 'Actions'].map((h) => (
                     <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 950, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6, whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -301,7 +320,7 @@ export default function Classes() {
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>{classe.niveau || classe.cycle || '—'}</td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: BLUE, fontWeight: 950 }}>{classe.nbEleves || 0}</td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>{classe.enseignant || classe.enseignantNom || classe.nomEnseignant || '—'}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>{classe.nbSalles || (Array.isArray(classe.salles) ? classe.salles.length : 0)}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#475569' }}>{classe.salle || '—'}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                       <button onClick={() => openEdit(classe)} style={{ padding: 8, background: '#eff6ff', border: 'none', borderRadius: 10, cursor: 'pointer', color: BLUE, marginRight: 8 }} title="Modifier"><Edit2 size={14} /></button>
                       <button onClick={() => handleDelete(classe.idClasse)} style={{ padding: 8, background: '#fff7ed', border: 'none', borderRadius: 10, cursor: 'pointer', color: ORANGE }} title="Supprimer"><Trash2 size={14} /></button>

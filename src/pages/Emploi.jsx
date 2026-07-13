@@ -55,6 +55,9 @@ const normalizeScheduleDay = (value) => {
 const normalizeEmploiItem = (item, courses = []) => {
   const normalized = { ...item };
   normalized.id = item.id ?? item.idTemps ?? item.ID ?? item.Id;
+  normalized.idClasse = item.idClasse ?? item.idclasse ?? item.id_classe ?? item.classe_id ?? item.classe ?? normalized.idClasse;
+  normalized.idSalle = item.idSalle ?? item.idsalle ?? item.id_salle ?? item.salle_id ?? normalized.idSalle;
+  normalized.idCours = item.idCours ?? item.idcours ?? item.id_cours ?? item.cours_id ?? normalized.idCours;
   normalized.dayOfWeek = normalizeScheduleDay(item.dayOfWeek ?? item.jour ?? item.day ?? item.day_of_week ?? item.jourDeSemaine) ?? normalized.dayOfWeek;
   const rawHeure = String(item.heure ?? '').trim();
   const heureParts = rawHeure.includes('-') ? rawHeure.split('-').map((p) => p.trim()) : [rawHeure];
@@ -67,8 +70,8 @@ const normalizeEmploiItem = (item, courses = []) => {
     normalized.endTime = computeEndTime(normalized.startTime, 1);
   }
 
-  if (!normalized.subject && item.idCours) {
-    const course = courses.find((c) => String(c.idCours || c.id) === String(item.idCours));
+  if (!normalized.subject && normalized.idCours) {
+    const course = courses.find((c) => String(c.idCours || c.id) === String(normalized.idCours));
     if (course) normalized.subject = course.libelle || course.label || normalized.subject;
   }
 
@@ -83,7 +86,7 @@ const EMPTY_FORM = {
   id: null,
   idClasse: '',
   dayOfWeek: '1',
-  startTime: '08:00',
+  startTime: '07:00',
   duration: '1',
   idCours: '',
   subject: '',
@@ -204,11 +207,17 @@ export default function Emploi() {
   const selectedItems = useMemo(() => {
     if (selectedMode === 'classe') {
       if (!selectedClasse) return [];
-      return items.filter((it) => String(it.idClasse || '') === String(selectedClasse));
+      return items.filter((it) => {
+        const itemClasse = it.idClasse ?? it.idclasse ?? it.id_classe ?? it.classe_id ?? it.classe ?? '';
+        return String(itemClasse) === String(selectedClasse);
+      });
     }
     if (selectedMode === 'salle') {
       if (!selectedSalle) return [];
-      return items.filter((it) => String(it.idSalle || '') === String(selectedSalle));
+      return items.filter((it) => {
+        const itemSalle = it.idSalle ?? it.idsalle ?? it.id_salle ?? it.salle_id ?? it.salle ?? '';
+        return String(itemSalle) === String(selectedSalle);
+      });
     }
     return [];
   }, [items, selectedClasse, selectedSalle, selectedMode]);
@@ -308,7 +317,7 @@ export default function Emploi() {
       idClasse: selectedMode === 'classe' ? (selectedClasse || '') : '',
       idSalle: selectedMode === 'salle' ? (selectedSalle || '') : '',
       dayOfWeek: String(dayOfWeek ?? 1),
-      startTime: startTime ?? '08:00',
+      startTime: startTime ?? '07:00',
       duration: '1',
     });
     setModal('create');
@@ -330,7 +339,7 @@ export default function Emploi() {
       id: it.id,
       idClasse: it.idClasse ? String(it.idClasse) : '',
       dayOfWeek: String(normalizedDay),
-      startTime: normalizeTimeInput(it.startTime) || '08:00',
+      startTime: normalizeTimeInput(it.startTime) || '07:00',
       duration: String(duration || 1),
       subject: it.subject || '',
       idProf: it.idProf ? String(it.idProf) : '',
@@ -356,8 +365,8 @@ export default function Emploi() {
     if (start == null || end == null) return 'Heures invalides';
     if (end <= start) return 'La durée doit produire une heure de fin valide';
 
-    // bornes 8h → 18h (tolérance)
-    if (start < 8 * 60 || end > 18 * 60) return 'Horaire hors plage (08:00 → 18:00)';
+    // bornes 7h → 17h
+    if (start < 7 * 60 || end > 17 * 60) return 'Horaire hors plage (07:00 → 17:00)';
 
     const conflict = findConflict({
       ...form,
@@ -704,7 +713,7 @@ export default function Emploi() {
           </button>
 
           <button
-            onClick={() => openCreate(1, '08:00')}
+            onClick={() => openCreate(1, '07:00')}
             disabled={selectedMode === 'classe' ? !selectedClasse : !selectedSalle}
             style={{
               display: 'flex',

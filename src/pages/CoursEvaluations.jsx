@@ -149,11 +149,13 @@ export default function CoursEvaluations() {
     }
   };
 
-  const loadEvaluationsForCours = async (coursId) => {
+  const loadEvaluationsForCours = async (coursId, idSalle = null) => {
     setLoadingEvals(true);
     setError('');
     try {
-      const res = await getEvaluationsProgrammesAPI({ cours_id: coursId, classe: selectedClasse, idSalle: selectedCoursForEvals?.idSalle });
+      const params = { cours_id: coursId, classe: selectedClasse };
+      if (idSalle != null) params.idSalle = idSalle;
+      const res = await getEvaluationsProgrammesAPI(params);
       setEvaluations(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Erreur de chargement des évaluations');
@@ -248,37 +250,44 @@ export default function CoursEvaluations() {
 
   // --- Evaluations
   const openProgrammerEval = async (c) => {
-    setSelectedCoursForEvals(c);
+    const newSelectedCours = c;
+    setSelectedCoursForEvals(newSelectedCours);
     setEditingEvalId(null);
     setEvalViewOnly(false);
+
+    const isAdminLike = currentRole === 'admin' || currentRole === 'superadmin';
     setEvalForm({
       ...EMPTY_EVAL,
       classe: String(selectedClasse || c.idClasse || ''),
       cours_id: String(c.idCours),
-      idSalle: String(c.idSalle || ''),
+      idSalle: isAdminLike ? '' : String(c.idSalle || ''),
       enseignant_id: String(c.idEnseignant || ''),
-      scope: currentRole === 'admin' ? 'harmonisee' : 'sequentielle',
+      scope: isAdminLike ? 'harmonisee' : 'sequentielle',
     });
     setError('');
     setShowEvalModal(true);
 
-    await loadEvaluationsForCours(c.idCours);
+    await loadEvaluationsForCours(c.idCours, isAdminLike ? null : (c.idSalle || null));
   };
 
   const openViewEval = (ev) => {
+    const scope = String(ev.scope || (ev.idSalle ? 'sequentielle' : 'harmonisee'));
+    const isAdminLike = currentRole === 'admin' || currentRole === 'superadmin';
+    const idSalle = isAdminLike && scope === 'harmonisee' ? '' : String(ev.idSalle ?? selectedCoursForEvals?.idSalle ?? '');
+
     setEditingEvalId(ev.id);
     setEvalViewOnly(true);
     setEvalForm({
       libelle: ev.libelle || '',
       type: ev.type || 'Contrôle',
-      scope: ev.idSalle ? 'sequentielle' : 'harmonisee',
+      scope,
       date: ev.date ? String(ev.date).slice(0, 10) : '',
       duree: ev.duree ?? '',
       coeff: ev.coeff ?? '1',
-      classe: ev.classe ?? selectedClasse,
-      cours_id: ev.cours_id ?? selectedCoursForEvals?.idCours ?? '',
-      idSalle: ev.idSalle ?? selectedCoursForEvals?.idSalle ?? '',
-      enseignant_id: ev.enseignant_id ?? selectedCoursForEvals?.idEnseignant ?? '',
+      classe: String(ev.classe ?? selectedClasse ?? ''),
+      cours_id: String(ev.cours_id ?? selectedCoursForEvals?.idCours ?? ''),
+      idSalle,
+      enseignant_id: String(ev.enseignant_id ?? selectedCoursForEvals?.idEnseignant ?? ''),
       note_max: ev.note_max ?? '20',
       description: ev.description || '',
     });
@@ -286,19 +295,23 @@ export default function CoursEvaluations() {
   };
 
   const openEditEval = (ev) => {
+    const scope = String(ev.scope || (ev.idSalle ? 'sequentielle' : 'harmonisee'));
+    const isAdminLike = currentRole === 'admin' || currentRole === 'superadmin';
+    const idSalle = isAdminLike && scope === 'harmonisee' ? '' : String(ev.idSalle ?? selectedCoursForEvals?.idSalle ?? '');
+
     setEditingEvalId(ev.id);
     setEvalViewOnly(false);
     setEvalForm({
       libelle: ev.libelle || '',
       type: ev.type || 'Contrôle',
-      scope: ev.idSalle ? 'sequentielle' : 'harmonisee',
+      scope,
       date: ev.date ? String(ev.date).slice(0, 10) : '',
       duree: ev.duree ?? '',
       coeff: ev.coeff ?? '1',
-      classe: ev.classe ?? selectedClasse,
-      cours_id: ev.cours_id ?? selectedCoursForEvals?.idCours ?? '',
-      idSalle: ev.idSalle ?? selectedCoursForEvals?.idSalle ?? '',
-      enseignant_id: ev.enseignant_id ?? selectedCoursForEvals?.idEnseignant ?? '',
+      classe: String(ev.classe ?? selectedClasse ?? ''),
+      cours_id: String(ev.cours_id ?? selectedCoursForEvals?.idCours ?? ''),
+      idSalle,
+      enseignant_id: String(ev.enseignant_id ?? selectedCoursForEvals?.idEnseignant ?? ''),
       note_max: ev.note_max ?? '20',
       description: ev.description || '',
     });
@@ -338,24 +351,28 @@ export default function CoursEvaluations() {
     setSaving(true);
     setError('');
     try {
-      const scope = isAdminLike ? 'harmonisee' : 'sequentielle';
+      const scope = isAdminLike ? String(evalForm.scope || 'harmonisee') : 'sequentielle';
       const parsedIdSalle = evalForm.idSalle ? Number(evalForm.idSalle) : null;
 
-      if (!isAdminLike && !parsedIdSalle) {
+      if (isTeacher && !parsedIdSalle) {
         setError('Une évaluation professeur doit être liée à une salle');
         setSaving(false);
         return;
       }
 
-      if (isAdminLike && scope === 'harmonisee') {
-        if (parsedIdSalle) {
-          setError('Une évaluation harmonisée ne doit pas être liée à une salle');
-          setSaving(false);
-          return;
-        }
+      if (isAdminLike && scope === 'harmonisee' && parsedIdSalle) {
+        setError('Une évaluation harmonisée ne doit pas être liée à une salle');
+        setSaving(false);
+        return;
       }
 
-      const idSalle = isAdminLike && scope === 'harmonisee' ? null : parsedIdSalle;
+      if (isAdminLike && scope === 'sequentielle' && !parsedIdSalle) {
+        setError('Une évaluation séquentielle requiert une salle');
+        setSaving(false);
+        return;
+      }
+
+      const idSalle = scope === 'harmonisee' ? null : parsedIdSalle;
 
       const payload = {
         libelle: evalForm.libelle,
@@ -379,7 +396,11 @@ export default function CoursEvaluations() {
       setSuccess(editingEvalId ? 'Évaluation mise à jour !' : 'Évaluation programmée !');
       setTimeout(() => setSuccess(''), 2500);
 
-      if (selectedCoursForEvals?.idCours) await loadEvaluationsForCours(selectedCoursForEvals.idCours);
+      if (selectedCoursForEvals?.idCours) {
+        await loadEvaluationsForCours(selectedCoursForEvals.idCours);
+      } else if (selectedClasse) {
+        await loadClassEvaluations(selectedClasse);
+      }
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Erreur lors de l\'enregistrement');
     } finally {
@@ -699,12 +720,19 @@ export default function CoursEvaluations() {
                       {(currentRole === 'admin' || currentRole === 'superadmin') && evalForm.scope === 'harmonisee' ? (
                         <input disabled value="Aucune salle requise pour une évaluation harmonisée" style={{ ...inp, background: '#f8fafc' }} />
                       ) : (
-                        <select disabled={evalViewOnly} value={evalForm.idSalle || ''} onChange={(e) => setEvalForm({ ...evalForm, idSalle: e.target.value })} style={inp}>
-                          <option value="">-- Aucune / harmonisée --</option>
-                          {salles.map((s) => (
-                            <option key={s.idSalle} value={s.idSalle}>{s.libelle}</option>
-                          ))}
-                        </select>
+                        <>
+                          <select disabled={evalViewOnly || salles.length === 0} value={evalForm.idSalle || ''} onChange={(e) => setEvalForm({ ...evalForm, idSalle: e.target.value })} style={inp}>
+                            <option value="">-- Aucune / harmonisée --</option>
+                            {salles.map((s) => (
+                              <option key={s.idSalle} value={s.idSalle}>{s.libelle}</option>
+                            ))}
+                          </select>
+                          {!evalViewOnly && salles.length === 0 && (
+                            <div style={{ marginTop: 8, fontSize: 12, color: '#f97316' }}>
+                              Aucune salle disponible. Ajoutez une salle avant de programmer une évaluation professeur.
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

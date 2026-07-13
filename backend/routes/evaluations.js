@@ -21,7 +21,7 @@ router.get('/', verifyToken, async (req, res) => {
       FROM Evaluation ev
       LEFT JOIN Cours c ON c.idCours = ev.idCours
       LEFT JOIN Eleve e ON e.matricule = ev.matricule
-      LEFT JOIN Salle s ON s.idSalle = c.idSalle
+      LEFT JOIN Salle s ON s.idClasse = c.idClasse
       ORDER BY ev.created_at DESC LIMIT 500
     `);
     res.json(rows);

@@ -38,7 +38,7 @@ export const getGroupMessagesAPI = (id) => API.get(`/messages/groups/${id}/messa
 export const sendGroupMessageAPI = (id, data) => API.post(`/messages/groups/${id}/messages`, data);
 
 // Élèves
-export const getElevesAPI = () => API.get('/eleves');
+export const getElevesAPI = (params) => API.get('/eleves', params ? { params } : undefined);
 export const getEleveByIdAPI = (id) => API.get(`/eleves/${id}`);
 export const createEleveAPI = (data) => API.post('/eleves', data);
 export const updateEleveAPI = (id, data) => API.put(`/eleves/${id}`, data);

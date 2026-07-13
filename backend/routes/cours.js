@@ -61,10 +61,9 @@ router.get('/', verifyToken, async (req, res) => {
        LEFT JOIN Enseignant en ON (en.idEnseignant = c.idEnseignant) OR (en.idCours = c.idCours)
        LEFT JOIN Personne p ON p.idPers = en.idPers
        LEFT JOIN (
-         SELECT s2.idClasse, COUNT(DISTINCT f.matricule) AS nbEleves
-         FROM Salle s2
-         LEFT JOIN Frequente f ON f.idSalle = s2.idSalle
-         GROUP BY s2.idClasse
+         SELECT f.idClasse, COUNT(DISTINCT f.matricule) AS nbEleves
+         FROM Frequente f
+         GROUP BY f.idClasse
        ) nb ON nb.idClasse = c.idClasse
        ${where}
        ORDER BY c.libelle`,
@@ -102,7 +101,7 @@ router.get('/:id', verifyToken, async (req, res) => {
        LEFT JOIN (
          SELECT s2.idClasse, COUNT(DISTINCT f.matricule) AS nbEleves
          FROM Salle s2
-         LEFT JOIN Frequente f ON f.idSalle = s2.idSalle
+         LEFT JOIN Frequente f ON f.idClasse = s2.idClasse
          GROUP BY s2.idClasse
        ) nb ON nb.idClasse = c.idClasse
        WHERE c.idCours = ?`,

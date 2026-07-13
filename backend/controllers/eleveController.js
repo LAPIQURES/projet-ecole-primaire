@@ -10,10 +10,13 @@ async function resolvePersonneColumns() {
 
 exports.getEleves = async (req, res) => {
   try {
-    const { salle } = req.query;
+    const { salle, classe } = req.query;
     const conditions = [];
     const params = [];
-    if (salle) {
+    if (classe) {
+      conditions.push('c.idClasse = ?');
+      params.push(classe);
+    } else if (salle) {
       conditions.push('s.idSalle = ?');
       params.push(salle);
     }
@@ -34,17 +37,17 @@ exports.getEleves = async (req, res) => {
           GROUP BY matricule
         ) f2 ON f1.matricule = f2.matricule AND f1.created_at = f2.latest_created_at
       ) f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe c ON c.idClasse = s.idClasse
+      LEFT JOIN Classe c ON c.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = c.idSalle
       LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
       LEFT JOIN (
-        SELECT pr.matricule,
+        SELECT pe.matricule,
           MAX(p.nom) AS parentNom,
           MAX(p.prenom) AS parentPrenom,
           MAX(p.mobile) AS parentMobile
-        FROM Parents pr
-        JOIN Personne p ON p.idPers = pr.idPers
-        GROUP BY pr.matricule
+        FROM ParentEleve pe
+        JOIN Personne p ON p.idPers = pe.idPers
+        GROUP BY pe.matricule
       ) parent_info ON parent_info.matricule = e.matricule
       ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
       ORDER BY e.created_at DESC LIMIT 500
@@ -74,8 +77,8 @@ exports.getEleveById = async (req, res) => {
         c.libelle AS classe, c.idClasse, cy.libelle AS cycle
       FROM Eleve e
       LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe c ON c.idClasse = s.idClasse
+      LEFT JOIN Classe c ON c.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = c.idSalle
       LEFT JOIN Cycle cy ON cy.idCycle = c.idCycle
       WHERE e.matricule = ?`, [id]);
     if (!rows.length) return res.status(404).json({ error: 'Eleve non trouve' });
@@ -112,7 +115,7 @@ exports.getEleveById = async (req, res) => {
 
 exports.createEleve = async (req, res) => {
   try {
-    const { nom, prenom, sexe, dateNaissance, lieuNaissance, langue, idSalle, photoURL } = req.body;
+    const { nom, prenom, sexe, dateNaissance, lieuNaissance, langue, idSalle, idClasse, photoURL } = req.body;
     if (!nom || !prenom) return res.status(400).json({ error: 'Nom et prenom requis' });
     const idAdmin = req.user?.id || 1000;
     const matricule = Date.now() % 100000000;
@@ -127,21 +130,27 @@ exports.createEleve = async (req, res) => {
       [matricule, nom, prenom, sexe || 1, dateNaissance || null, lieuNaissance || '', langue || 'Francais', photoURL || '', idAdmin, idVille]
     );
 
-    if (idSalle) {
+    // Prefer explicit idClasse; if only idSalle provided, resolve classe
+    let finalIdClasse = idClasse || null;
+    if (!finalIdClasse && idSalle) {
+      const [clRow] = await pool.query('SELECT idClasse FROM Classe WHERE idSalle = ? LIMIT 1', [idSalle]);
+      if (clRow.length) finalIdClasse = clRow[0].idClasse;
+    }
+    if (finalIdClasse) {
       const [annees] = await pool.query('SELECT idAnnee FROM AnneeAcademique ORDER BY created_at DESC LIMIT 1');
       const idAcademi = annees.length > 0 ? annees[0].idAnnee : 1;
       await pool.query(
-        `INSERT INTO Frequente (idSalle, idAcademi, matricule, idAdmin, created_at) VALUES (?, ?, ?, ?, NOW())`,
-        [idSalle, idAcademi, matricule, idAdmin]
+        `INSERT INTO Frequente (idClasse, idAcademi, matricule, idAdmin, created_at) VALUES (?, ?, ?, ?, NOW())`,
+        [finalIdClasse, idAcademi, matricule, idAdmin]
       );
     }
 
     const [newEleve] = await pool.query(`
-      SELECT e.*, s.libelle AS salle, c.libelle AS classe
+      SELECT e.*, s.libelle AS salle, s.idSalle, c.libelle AS classe, c.idClasse
       FROM Eleve e
       LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe c ON c.idClasse = s.idClasse
+      LEFT JOIN Classe c ON c.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = c.idSalle
       WHERE e.matricule = ?`, [matricule]);
     res.status(201).json(newEleve[0]);
   } catch (error) {
@@ -153,24 +162,30 @@ exports.createEleve = async (req, res) => {
 exports.updateEleve = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom, prenom, sexe, dateNaissance, lieuNaissance, langue, actif, idSalle, photoURL } = req.body;
+    const { nom, prenom, sexe, dateNaissance, lieuNaissance, langue, actif, idSalle, idClasse, photoURL } = req.body;
     await pool.query(
       `UPDATE Eleve SET nom=?, prenom=?, sexe=?, dateNaissance=?, lieuNaissance=?, langue=?, actif=?, photoURL=? WHERE matricule=?`,
       [nom, prenom, sexe || 1, dateNaissance || null, lieuNaissance || '', langue || 'Francais', actif !== undefined ? actif : 1, photoURL || '', id]
     );
-    if (idSalle) {
+    // Update frequente: prefer idClasse, but accept idSalle (resolve to classe)
+    let newIdClasse = idClasse || null;
+    if (!newIdClasse && idSalle) {
+      const [clRow] = await pool.query('SELECT idClasse FROM Classe WHERE idSalle = ? LIMIT 1', [idSalle]);
+      if (clRow.length) newIdClasse = clRow[0].idClasse;
+    }
+    if (newIdClasse) {
       const [ex] = await pool.query('SELECT idFrequente FROM Frequente WHERE matricule = ?', [id]);
-      if (ex.length > 0) await pool.query('UPDATE Frequente SET idSalle=? WHERE matricule=?', [idSalle, id]);
+      if (ex.length > 0) await pool.query('UPDATE Frequente SET idClasse=? WHERE matricule=?', [newIdClasse, id]);
       else {
         const [annees] = await pool.query('SELECT idAnnee FROM AnneeAcademique ORDER BY created_at DESC LIMIT 1');
-        await pool.query('INSERT INTO Frequente (idSalle, idAcademi, matricule, idAdmin, created_at) VALUES (?, ?, ?, ?, NOW())',
-          [idSalle, annees[0]?.idAnnee || 1, id, req.user?.id || 1000]);
+        await pool.query('INSERT INTO Frequente (idClasse, idAcademi, matricule, idAdmin, created_at) VALUES (?, ?, ?, ?, NOW())',
+          [newIdClasse, annees[0]?.idAnnee || 1, id, req.user?.id || 1000]);
       }
     }
     const [rows] = await pool.query(`
-      SELECT e.*, s.libelle AS salle, c.libelle AS classe
+      SELECT e.*, s.libelle AS salle, s.idSalle, c.libelle AS classe, c.idClasse
       FROM Eleve e LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle LEFT JOIN Classe c ON c.idClasse = s.idClasse
+      LEFT JOIN Classe c ON c.idClasse = f.idClasse LEFT JOIN Salle s ON s.idSalle = c.idSalle
       WHERE e.matricule = ?`, [id]);
     res.json(rows[0]);
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -253,7 +268,8 @@ exports.getEleveAttendance = async (req, res) => {
         END AS status,
         DATE_FORMAT(f.created_at, '%Y-%m-%d') AS date
       FROM Frequente f
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
+      LEFT JOIN Classe cl ON cl.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = cl.idSalle
       WHERE f.matricule = ?
     `;
     
@@ -277,7 +293,7 @@ exports.getEleveAttendance = async (req, res) => {
 // Mark attendance for a student (teacher attendance register)
 exports.markAttendance = async (req, res) => {
   try {
-    const { matricule, idSalle, commentaire, date } = req.body;
+    const { matricule, idSalle, idClasse, commentaire, date } = req.body;
     const idAdmin = req.user?.id || 1000;
 
     if (!matricule) {
@@ -286,20 +302,22 @@ exports.markAttendance = async (req, res) => {
 
     // Keep matricule as string to avoid truncation/parse issues (may contain non-digits)
     const matriculeFinal = String(matricule).trim();
-    let finalIdSalle = idSalle ? parseInt(idSalle, 10) : null;
-
-    if (!finalIdSalle) {
+    // Resolve final class: prefer explicit idClasse, else resolve from idSalle, else use last frequente
+    let finalIdClasse = idClasse ? parseInt(idClasse, 10) : null;
+    if (!finalIdClasse && idSalle) {
+      const [clRow] = await pool.query('SELECT idClasse FROM Classe WHERE idSalle = ? LIMIT 1', [idSalle]);
+      if (clRow.length) finalIdClasse = clRow[0].idClasse;
+    }
+    if (!finalIdClasse) {
       const [prev] = await pool.query(
-        'SELECT idSalle FROM Frequente WHERE matricule = ? AND idSalle IS NOT NULL ORDER BY created_at DESC LIMIT 1',
+        'SELECT idClasse FROM Frequente WHERE matricule = ? AND idClasse IS NOT NULL ORDER BY created_at DESC LIMIT 1',
         [matriculeFinal]
       );
-      if (prev.length > 0) {
-        finalIdSalle = prev[0].idSalle;
-      }
+      if (prev.length > 0) finalIdClasse = prev[0].idClasse;
     }
 
-    if (!finalIdSalle) {
-      return res.status(400).json({ error: 'Salle requise pour marquer la présence' });
+    if (!finalIdClasse) {
+      return res.status(400).json({ error: 'Classe requise pour marquer la présence' });
     }
 
     const [annees] = await pool.query('SELECT idAnnee FROM AnneeAcademique ORDER BY created_at DESC LIMIT 1');
@@ -307,9 +325,9 @@ exports.markAttendance = async (req, res) => {
     const createdAt = date || new Date().toISOString().split('T')[0];
 
     const [result] = await pool.query(`
-      INSERT INTO Frequente (matricule, idSalle, idAcademi, commentaire, idAdmin, created_at)
+      INSERT INTO Frequente (matricule, idClasse, idAcademi, commentaire, idAdmin, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
-    `, [matriculeFinal, finalIdSalle, idAcademi, commentaire || 'RAS', idAdmin, createdAt]);
+    `, [matriculeFinal, finalIdClasse, idAcademi, commentaire || 'RAS', idAdmin, createdAt]);
 
     res.status(201).json({
       idFrequente: result.insertId,

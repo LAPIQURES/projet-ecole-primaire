@@ -15,10 +15,10 @@ async function findOrCreateClasse(libelle, idCycle, idAdmin = 1) {
   return result.insertId;
 }
 
-async function findOrCreateSalle(libelle, position, surface, idClasse, idAdmin = 1) {
+async function findOrCreateSalle(libelle, position, surface, idAdmin = 1) {
   const [rows] = await pool.query('SELECT idSalle FROM Salle WHERE libelle = ? LIMIT 1', [libelle]);
   if (rows.length > 0) return rows[0].idSalle;
-  const [result] = await pool.query('INSERT INTO Salle (libelle, position, surface, idClasse, actif, idAdmin) VALUES (?, ?, ?, ?, 1, ?)', [libelle, position, surface, idClasse, idAdmin]);
+  const [result] = await pool.query('INSERT INTO Salle (libelle, position, surface, actif, idAdmin) VALUES (?, ?, ?, 1, ?)', [libelle, position, surface, idAdmin]);
   return result.insertId;
 }
 
@@ -78,10 +78,10 @@ async function findOrCreateEleve(matricule, nom, prenom, dateNaissance, lieuNais
   return result.insertId || matricule;
 }
 
-async function findOrCreateFrequente(idSalle, idAcademi, matricule, commentaire, idAdmin = 1) {
-  const [rows] = await pool.query('SELECT idFrequente FROM Frequente WHERE idSalle = ? AND idAcademi = ? AND matricule = ? LIMIT 1', [idSalle, idAcademi, matricule]);
+async function findOrCreateFrequente(idClasse, idAcademi, matricule, commentaire, idAdmin = 1) {
+  const [rows] = await pool.query('SELECT idFrequente FROM Frequente WHERE idClasse = ? AND idAcademi = ? AND matricule = ? LIMIT 1', [idClasse, idAcademi, matricule]);
   if (rows.length > 0) return rows[0].idFrequente;
-  const [result] = await pool.query('INSERT INTO Frequente (idSalle, idAcademi, matricule, commentaire, idAdmin) VALUES (?, ?, ?, ?, ?)', [idSalle, idAcademi, matricule, commentaire, idAdmin]);
+  const [result] = await pool.query('INSERT INTO Frequente (idClasse, idAcademi, matricule, commentaire, idAdmin) VALUES (?, ?, ?, ?, ?)', [idClasse, idAcademi, matricule, commentaire, idAdmin]);
   return result.insertId;
 }
 
@@ -132,9 +132,9 @@ async function seed() {
     const classe3Id = await findOrCreateClasse('4ème A', cycle2Id);
     const classe4Id = await findOrCreateClasse('3ème B', cycle2Id);
 
-    await findOrCreateSalle('Salle 101', 'Nord', '50m2', classe1Id);
-    await findOrCreateSalle('Salle 102', 'Est', '45m2', classe2Id);
-    await findOrCreateSalle('Salle 201', 'Ouest', '55m2', classe3Id);
+    await findOrCreateSalle('Salle 101', 'Nord', '50m2');
+    await findOrCreateSalle('Salle 102', 'Est', '45m2');
+    await findOrCreateSalle('Salle 201', 'Ouest', '55m2');
 
     const specMathId = await findOrCreateSpecialite('Mathématiques');
     const specSciencesId = await findOrCreateSpecialite('Sciences');
@@ -169,16 +169,16 @@ async function seed() {
     await findOrCreateEleve(1010, 'Ciss', 'Moussa', '2011-06-30', 'Dakar', 1, 'Francais', '', 1, dakarId);
 
     const idAcademi = anneeId;
-    await findOrCreateFrequente(1, idAcademi, 1001, 'Inscrit 6ème');
-    await findOrCreateFrequente(1, idAcademi, 1002, 'Inscrit 6ème');
-    await findOrCreateFrequente(2, idAcademi, 1003, 'Inscrit 5ème');
-    await findOrCreateFrequente(2, idAcademi, 1004, 'Inscrit 5ème');
-    await findOrCreateFrequente(3, idAcademi, 1005, 'Inscrit 4ème');
-    await findOrCreateFrequente(3, idAcademi, 1006, 'Inscrit 4ème');
-    await findOrCreateFrequente(3, idAcademi, 1007, 'Inscrit 4ème');
-    await findOrCreateFrequente(1, idAcademi, 1008, 'Inscrit 6ème');
-    await findOrCreateFrequente(2, idAcademi, 1009, 'Inscrit 5ème');
-    await findOrCreateFrequente(3, idAcademi, 1010, 'Inscrit 4ème');
+    await findOrCreateFrequente(classe1Id, idAcademi, 1001, 'Inscrit 6ème');
+    await findOrCreateFrequente(classe1Id, idAcademi, 1002, 'Inscrit 6ème');
+    await findOrCreateFrequente(classe2Id, idAcademi, 1003, 'Inscrit 5ème');
+    await findOrCreateFrequente(classe2Id, idAcademi, 1004, 'Inscrit 5ème');
+    await findOrCreateFrequente(classe3Id, idAcademi, 1005, 'Inscrit 4ème');
+    await findOrCreateFrequente(classe3Id, idAcademi, 1006, 'Inscrit 4ème');
+    await findOrCreateFrequente(classe3Id, idAcademi, 1007, 'Inscrit 4ème');
+    await findOrCreateFrequente(classe1Id, idAcademi, 1008, 'Inscrit 6ème');
+    await findOrCreateFrequente(classe2Id, idAcademi, 1009, 'Inscrit 5ème');
+    await findOrCreateFrequente(classe3Id, idAcademi, 1010, 'Inscrit 4ème');
 
     const piqurePassword = await bcrypt.hash('1234', saltRounds);
     const piqurePersId = await findOrCreatePersonne(1001, 'Piqure', 'Enseignant', '1985-03-10', 'Dakar', '770000000', '', 2, 'piqure', piqurePassword);

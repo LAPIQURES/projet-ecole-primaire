@@ -40,7 +40,7 @@ export default function TeacherCourseList() {
   const courseStats = {
     total: filteredCourses.length,
     byRoom: [...new Set(filteredCourses.map(c => c.salle || c.libelleSalle))].length,
-    hours: filteredCourses.length > 0 ? `${Math.min(...filteredCourses.map(c => c.heure || '08:00'))} - ${Math.max(...filteredCourses.map(c => c.heure || '18:00'))}` : '—'
+    hours: filteredCourses.length > 0 ? `${Math.min(...filteredCourses.map(c => c.heure || '07:00'))} - ${Math.max(...filteredCourses.map(c => c.fin_heure || '17:00'))}` : '—'
   };
 
   if (loading) {
@@ -207,7 +207,7 @@ export default function TeacherCourseList() {
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', color: '#4b5563', fontWeight: '500' }}>
-                      {course.heure || '08:00'} - {course.fin_heure || '10:00'}
+                      {course.heure || '07:00'} - {course.fin_heure || '17:00'}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center', color: '#4b5563', fontWeight: '600' }}>
                       {course.nbEleves || '—'}

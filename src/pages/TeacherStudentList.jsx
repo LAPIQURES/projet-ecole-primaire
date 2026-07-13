@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
 import TeacherLayout from '../components/TeacherLayout';
-import { getTeacherStudentsAPI, getTeacherClassesSallesAPI, createEvaluationAPI } from '../services/api';
+import { getElevesAPI, getTeacherStudentsAPI, getTeacherClassesSallesAPI, createEvaluationAPI } from '../services/api';
 
 export default function TeacherStudentList() {
   const [students, setStudents] = useState([]);
+  const [teacherStudents, setTeacherStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -27,7 +28,9 @@ export default function TeacherStudentList() {
         getTeacherClassesSallesAPI()
       ]);
 
-      setStudents(Array.isArray(studentsRes.data) ? studentsRes.data : []);
+      const teacherStudentData = Array.isArray(studentsRes.data) ? studentsRes.data : [];
+      setTeacherStudents(teacherStudentData);
+      setStudents(teacherStudentData);
 
       const classesData = Array.isArray(classesSallesRes.data?.classes)
         ? classesSallesRes.data.classes
@@ -42,6 +45,17 @@ export default function TeacherStudentList() {
       setError(err.response?.data?.error || err.message || 'Erreur lors du chargement');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadClassStudents = async (classeId) => {
+    try {
+      const res = await getElevesAPI({ classe: classeId });
+      setStudents(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Error loading class students:', err);
+      setStudents([]);
+      setError(err.response?.data?.error || err.message || 'Erreur lors du chargement des élèves');
     }
   };
 
@@ -69,7 +83,7 @@ export default function TeacherStudentList() {
   };
 
   const filteredStudents = students.filter((student) => {
-    if (selectedClass && student.classe !== selectedClass) return false;
+    if (selectedClass && String(student.idClasse) !== String(selectedClass)) return false;
     if (selectedRoom && (student.salle || student.libelleSalle || '') !== selectedRoom) return false;
     return true;
   });
@@ -119,15 +133,21 @@ export default function TeacherStudentList() {
             </label>
             <select
               value={selectedClass}
-              onChange={(e) => {
-                setSelectedClass(e.target.value);
+              onChange={async (e) => {
+                const value = e.target.value;
+                setSelectedClass(value);
                 setSelectedRoom('');
+                if (value) {
+                  await loadClassStudents(value);
+                } else {
+                  setStudents(teacherStudents);
+                }
               }}
               style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
             >
               <option value="">Toutes les classes</option>
               {classes.map((c) => (
-                <option key={c.idClasse} value={c.libelle}>{c.libelle}</option>
+                <option key={c.idClasse} value={c.idClasse}>{c.libelle}</option>
               ))}
             </select>
           </div>

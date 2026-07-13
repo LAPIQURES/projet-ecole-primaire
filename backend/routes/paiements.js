@@ -12,8 +12,7 @@ async function resolvePaiementAllocation(matricule, montant) {
     FROM Tranches t
     JOIN Scolarite sc ON sc.idScolarite = t.idScolarite
     JOIN Classe c ON c.idClasse = sc.idClasse
-    JOIN Salle s ON s.idClasse = c.idClasse
-    JOIN Frequente f ON f.idSalle = s.idSalle
+    JOIN Frequente f ON f.idClasse = c.idClasse
     WHERE f.matricule = ?
     ORDER BY t.idTranche ASC
   `, [matricule]);
@@ -92,8 +91,7 @@ router.get('/scolarite/:matricule', verifyToken, async (req, res) => {
       SELECT sc.*
       FROM Scolarite sc
       JOIN Classe c ON c.idClasse = sc.idClasse
-      JOIN Salle s ON s.idClasse = c.idClasse
-      JOIN Frequente f ON f.idSalle = s.idSalle
+      JOIN Frequente f ON f.idClasse = c.idClasse
       WHERE f.matricule = ?
       LIMIT 1
     `, [matricule]);
@@ -127,8 +125,8 @@ router.get('/:id', verifyToken, async (req, res) => {
       FROM Paiement p
       LEFT JOIN Eleve e ON e.matricule = p.matricule
       LEFT JOIN Frequente f ON f.matricule = e.matricule
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe c ON c.idClasse = s.idClasse
+      LEFT JOIN Classe c ON c.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idClasse = c.idClasse
       LEFT JOIN Mode m ON m.idMode = p.idMode
       LEFT JOIN Personne per ON per.idPers = p.idPers
       LEFT JOIN Admin adm ON adm.ID = p.idPers AND per.idPers IS NULL

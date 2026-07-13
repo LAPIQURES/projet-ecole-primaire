@@ -64,8 +64,8 @@ exports.getDashboardStats = async (req, res) => {
         SELECT e.matricule, e.nom, e.prenom, e.created_at, e.photoURL, c.libelle as classe
         FROM Eleve e
         LEFT JOIN Frequente f ON f.matricule = e.matricule
-        LEFT JOIN Salle s ON s.idSalle = f.idSalle
-        LEFT JOIN Classe c ON c.idClasse = s.idClasse
+        LEFT JOIN Classe c ON c.idClasse = f.idClasse
+        LEFT JOIN Salle s ON s.idSalle = c.idSalle
         WHERE e.actif = 1
         ORDER BY e.created_at DESC LIMIT 5
       `),
@@ -75,8 +75,8 @@ exports.getDashboardStats = async (req, res) => {
       pool.query(`
         SELECT c.libelle, COUNT(DISTINCT f.matricule) as effectif, s.capacite
         FROM Classe c
-        LEFT JOIN Salle s ON s.idClasse = c.idClasse
-        LEFT JOIN Frequente f ON f.idSalle = s.idSalle
+        LEFT JOIN Salle s ON s.idSalle = c.idSalle
+        LEFT JOIN Frequente f ON f.idClasse = c.idClasse
         GROUP BY c.idClasse, c.libelle, s.capacite
         ORDER BY effectif DESC
         LIMIT 8
@@ -164,9 +164,9 @@ exports.getIntendantDashboard = async (req, res) => {
           pr.mobile
         FROM Eleve e
         LEFT JOIN Frequente f ON f.matricule = e.matricule
-        LEFT JOIN Salle sal ON sal.idSalle = f.idSalle
-        LEFT JOIN Classe c ON c.idClasse = sal.idClasse
-        LEFT JOIN Scolarite sc ON sc.idScolarite = f.idScolarite
+        LEFT JOIN Classe c ON c.idClasse = f.idClasse
+        LEFT JOIN Salle sal ON sal.idSalle = c.idSalle
+        LEFT JOIN Scolarite sc ON sc.idCycle = c.idCycle
         LEFT JOIN (
           SELECT matricule, SUM(montant) as totalPaye FROM Paiement GROUP BY matricule
         ) paye ON paye.matricule = e.matricule

@@ -40,7 +40,8 @@ async function test() {
     SELECT COUNT(*) as nb
     FROM Eleve e
     LEFT JOIN Frequente f ON f.matricule = e.matricule
-    LEFT JOIN Scolarite sc ON sc.idScolarite = f.idScolarite
+    LEFT JOIN Classe cl ON cl.idClasse = f.idClasse
+    LEFT JOIN Scolarite sc ON sc.idCycle = cl.idCycle
     LEFT JOIN (SELECT matricule, SUM(montant) as totalPaye FROM Paiement GROUP BY matricule) paye ON paye.matricule = e.matricule
     WHERE e.actif = 1
       AND ((COALESCE(sc.inscription,0) + COALESCE(sc.pension,0)) - COALESCE(paye.totalPaye, 0)) > 0
@@ -56,8 +57,9 @@ async function test() {
       pr.nom AS parentNom, pr.mobile
     FROM Eleve e
     LEFT JOIN Frequente f ON f.matricule = e.matricule
-    LEFT JOIN Salle sal ON sal.idSalle = f.idSalle
-    LEFT JOIN Scolarite sc ON sc.idScolarite = f.idScolarite
+    LEFT JOIN Classe cl ON cl.idClasse = f.idClasse
+    LEFT JOIN Salle sal ON sal.idSalle = cl.idSalle
+    LEFT JOIN Scolarite sc ON sc.idCycle = cl.idCycle
     LEFT JOIN (SELECT matricule, SUM(montant) as totalPaye FROM Paiement GROUP BY matricule) paye ON paye.matricule = e.matricule
     LEFT JOIN ParentEleve pe ON pe.matricule = e.matricule
     LEFT JOIN Personne pr ON pr.idPers = pe.idPers

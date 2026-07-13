@@ -112,8 +112,8 @@ exports.getBulletinsEleve = async (req, res) => {
     const { matricule } = req.params;
     
     const [bulletins] = await pool.query(`
-      SELECT b.idBulletin, b.matricule, b.idAnnee, b.idTrimes, 
-             b.dateGeneration, b.statut, b.moyenneGenerale, 
+      SELECT b.idBulletin, b.matricule, b.idAnnee, b.idTrimes,
+             b.dateGeneration, b.statut, b.moyenneGenerale,
              b.appreciation, a.libelle AS annee, t.libelle AS trimestre,
              COUNT(bd.idDetail) AS nombreCours
       FROM Bulletin b
@@ -121,7 +121,7 @@ exports.getBulletinsEleve = async (req, res) => {
       JOIN Trimestre t ON t.idTrimes = b.idTrimes
       LEFT JOIN BulletinDetail bd ON bd.idBulletin = b.idBulletin
       WHERE b.matricule = ?
-      GROUP BY b.idBulletin
+      GROUP BY b.idBulletin, b.matricule, b.idAnnee, b.idTrimes, b.dateGeneration, b.statut, b.moyenneGenerale, b.appreciation, a.libelle, t.libelle
       ORDER BY a.idAnnee DESC, t.idTrimes DESC
     `, [matricule]);
 
@@ -149,8 +149,8 @@ exports.getBulletinDetail = async (req, res) => {
       JOIN Trimestre t ON t.idTrimes = b.idTrimes
       JOIN Eleve e ON CAST(e.matricule AS CHAR) = CAST(b.matricule AS CHAR)
       LEFT JOIN Frequente f ON CAST(f.matricule AS CHAR) = CAST(e.matricule AS CHAR)
-      LEFT JOIN Salle s ON s.idSalle = f.idSalle
-      LEFT JOIN Classe cl ON cl.idClasse = s.idClasse
+      LEFT JOIN Classe cl ON cl.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = cl.idSalle
       LEFT JOIN Cycle cy ON cy.idCycle = cl.idCycle
       WHERE b.idBulletin = ?
       ORDER BY f.created_at DESC
@@ -307,16 +307,17 @@ exports.generateClassBulletins = async (req, res) => {
     if (idSalle) {
       selectionLabel = 'Salle';
       const [[salleRow]] = await pool.query(
-        `SELECT s.libelle AS salle, cl.libelle AS classe FROM Salle s LEFT JOIN Classe cl ON cl.idClasse = s.idClasse WHERE s.idSalle = ?`,
+        `SELECT s.libelle AS salle, cl.libelle AS classe FROM Salle s LEFT JOIN Classe cl ON cl.idSalle = s.idSalle WHERE s.idSalle = ?`,
         [idSalle]
       );
       selectionValue = salleRow ? `${salleRow.salle} (${salleRow.classe || ''})` : `Salle ${idSalle}`;
-      whereClause = 'WHERE f.idSalle = ? AND f.idAcademi = ?';
+      // select students where their classe points to this salle
+      whereClause = 'WHERE cl.idSalle = ? AND f.idAcademi = ?';
       params = [idSalle, idAnnee];
     } else {
       const [[classeRow]] = await pool.query(`SELECT libelle FROM Classe WHERE idClasse = ?`, [idClasse]);
       selectionValue = classeRow ? classeRow.libelle : `Classe ${idClasse}`;
-      whereClause = 'WHERE s.idClasse = ? AND f.idAcademi = ?';
+      whereClause = 'WHERE f.idClasse = ? AND f.idAcademi = ?';
       params = [idClasse, idAnnee];
     }
 
@@ -325,7 +326,8 @@ exports.generateClassBulletins = async (req, res) => {
       `SELECT DISTINCT CAST(e.matricule AS CHAR) AS matricule, e.nom, e.prenom, e.photoURL, e.dateNaissance, e.sexe
        FROM Eleve e
        LEFT JOIN Frequente f ON CAST(f.matricule AS CHAR) = CAST(e.matricule AS CHAR)
-       LEFT JOIN Salle s ON s.idSalle = f.idSalle
+       LEFT JOIN Classe cl ON cl.idClasse = f.idClasse
+       LEFT JOIN Salle s ON s.idSalle = cl.idSalle
        ${whereClause}
        ORDER BY e.nom, e.prenom`,
       params
@@ -363,6 +365,51 @@ exports.generateClassBulletins = async (req, res) => {
     studentAverages.sort((a, b) => b.moyenne - a.moyenne);
     const allAvg = studentAverages.map(s => s.moyenne).filter(m => m > 0);
     const moyenneClasse = allAvg.length > 0 ? parseFloat((allAvg.reduce((a, b) => a + b, 0) / allAvg.length).toFixed(2)) : 0;
+
+    // --- Persist the generated bulletins into the database ---
+    const idAdmin = req.user?.id || 1000;
+    for (const el of eleves) {
+      const evaluations = studentEvals[el.matricule] || [];
+      const avgInfo = studentAverages.find(s => String(s.matricule) === String(el.matricule));
+      const moyenneGenerale = avgInfo ? avgInfo.moyenne : 0;
+      
+      // Check if bulletin already exists
+      const [existing] = await pool.query(
+        'SELECT idBulletin FROM Bulletin WHERE matricule = ? AND idTrimes = ? AND idAnnee = ?',
+        [el.matricule, idTrimes, idAnnee]
+      );
+      
+      let bulletinId = null;
+      if (existing.length > 0) {
+        bulletinId = existing[0].idBulletin;
+        // Update general average and date
+        await pool.query(
+          'UPDATE Bulletin SET moyenneGenerale = ?, dateGeneration = NOW() WHERE idBulletin = ?',
+          [moyenneGenerale, bulletinId]
+        );
+        // Clear old details to re-insert
+        await pool.query('DELETE FROM BulletinDetail WHERE idBulletin = ?', [bulletinId]);
+      } else {
+        // Create new bulletin
+        const generalAppreciation = obtenirAppreciation(moyenneGenerale);
+        const [resBull] = await pool.query(`
+          INSERT INTO Bulletin (matricule, idAnnee, idTrimes, appreciation, idPers, statut, dateGeneration, moyenneGenerale)
+          VALUES (?, ?, ?, ?, ?, 'brouillon', NOW(), ?)
+        `, [el.matricule, idAnnee, idTrimes, generalAppreciation, idAdmin, moyenneGenerale]);
+        bulletinId = resBull.insertId;
+      }
+      
+      // Insert details
+      if (evaluations.length > 0) {
+        for (const ev of evaluations) {
+          const appre = ev.appreciation || obtenirAppreciation(ev.note);
+          await pool.query(`
+            INSERT INTO BulletinDetail (idBulletin, idCours, libelleCours, note, appreciation, coefficient)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [bulletinId, ev.idCours || null, ev.cours || 'Matière inconnue', ev.note || 0, appre, ev.coefficient || 1]);
+        }
+      }
+    }
 
     // Generate HTML
     let html = `<!doctype html><html><head><meta charset="utf-8"><title>Bulletins ${selectionValue}</title>

@@ -6,15 +6,15 @@ exports.getInscriptions = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 
-        f.idFrequente, f.matricule, f.idSalle, f.idAcademi,
+        f.idFrequente, f.matricule, f.idClasse, f.idAcademi,
         e.nom AS eleveNom, e.prenom AS elevePrenom,
         c.libelle AS classe,
         s.libelle AS salle,
         a.libelle AS annee
       FROM Frequente f
       JOIN Eleve e ON e.matricule = f.matricule
-      JOIN Salle s ON s.idSalle = f.idSalle
-      JOIN Classe c ON c.idClasse = s.idClasse
+      JOIN Classe c ON c.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = c.idSalle
       JOIN AnneeAcademique a ON a.idAnnee = f.idAcademi
       ORDER BY a.libelle DESC, e.nom ASC
     `);
@@ -30,15 +30,15 @@ exports.getInscriptionById = async (req, res) => {
     const { id } = req.params;
     const [rows] = await pool.query(`
       SELECT 
-        f.idFrequente, f.matricule, f.idSalle, f.idAcademi,
+        f.idFrequente, f.matricule, f.idClasse, f.idAcademi,
         e.nom AS eleveNom, e.prenom AS elevePrenom,
         c.libelle AS classe,
         s.libelle AS salle,
         a.libelle AS annee, a.periode
       FROM Frequente f
       JOIN Eleve e ON e.matricule = f.matricule
-      JOIN Salle s ON s.idSalle = f.idSalle
-      JOIN Classe c ON c.idClasse = s.idClasse
+      JOIN Classe c ON c.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = c.idSalle
       JOIN AnneeAcademique a ON a.idAnnee = f.idAcademi
       WHERE f.idFrequente = ?
     `, [id]);
@@ -52,30 +52,30 @@ exports.getInscriptionById = async (req, res) => {
 // CREATE INSCRIPTION
 exports.createInscription = async (req, res) => {
   try {
-    const { matricule, idSalle, idAcademi, commentaire } = req.body;
-    if (!matricule || !idSalle || !idAcademi) {
-      return res.status(400).json({ error: 'matricule, idSalle, idAcademi requis' });
+    const { matricule, idClasse, idAcademi, commentaire } = req.body;
+    if (!matricule || !idClasse || !idAcademi) {
+      return res.status(400).json({ error: 'matricule, idClasse, idAcademi requis' });
     }
 
     const idAdmin = req.user?.id || 1;
 
     const [result] = await pool.query(
-      `INSERT INTO Frequente (matricule, idSalle, idAcademi, commentaire, idAdmin, created_at)
+      `INSERT INTO Frequente (matricule, idClasse, idAcademi, commentaire, idAdmin, created_at)
        VALUES (?, ?, ?, ?, ?, NOW())`,
-      [matricule, idSalle, idAcademi, commentaire || '', idAdmin]
+      [matricule, idClasse, idAcademi, commentaire || '', idAdmin]
     );
 
     const [rows] = await pool.query(`
       SELECT 
-        f.idFrequente, f.matricule, f.idSalle, f.idAcademi,
+        f.idFrequente, f.matricule, f.idClasse, f.idAcademi,
         e.nom AS eleveNom, e.prenom AS elevePrenom,
         c.libelle AS classe,
         s.libelle AS salle,
         a.libelle AS annee
       FROM Frequente f
       JOIN Eleve e ON e.matricule = f.matricule
-      JOIN Salle s ON s.idSalle = f.idSalle
-      JOIN Classe c ON c.idClasse = s.idClasse
+      JOIN Classe c ON c.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = c.idSalle
       JOIN AnneeAcademique a ON a.idAnnee = f.idAcademi
       WHERE f.idFrequente = ?
     `, [result.insertId]);
@@ -91,24 +91,24 @@ exports.createInscription = async (req, res) => {
 exports.updateInscription = async (req, res) => {
   try {
     const { id } = req.params;
-    const { idSalle, idAcademi, commentaire } = req.body;
+    const { idClasse, idAcademi, commentaire } = req.body;
 
     await pool.query(
-      `UPDATE Frequente SET idSalle=?, idAcademi=?, commentaire=? WHERE idFrequente=?`,
-      [idSalle, idAcademi, commentaire || '', id]
+      `UPDATE Frequente SET idClasse=?, idAcademi=?, commentaire=? WHERE idFrequente=?`,
+      [idClasse, idAcademi, commentaire || '', id]
     );
 
     const [rows] = await pool.query(`
       SELECT 
-        f.idFrequente, f.matricule, f.idSalle, f.idAcademi,
+        f.idFrequente, f.matricule, f.idClasse, f.idAcademi,
         e.nom AS eleveNom, e.prenom AS elevePrenom,
         c.libelle AS classe,
         s.libelle AS salle,
         a.libelle AS annee
       FROM Frequente f
       JOIN Eleve e ON e.matricule = f.matricule
-      JOIN Salle s ON s.idSalle = f.idSalle
-      JOIN Classe c ON c.idClasse = s.idClasse
+      JOIN Classe c ON c.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = c.idSalle
       JOIN AnneeAcademique a ON a.idAnnee = f.idAcademi
       WHERE f.idFrequente = ?
     `, [id]);
@@ -138,13 +138,13 @@ exports.getInscriptionsByEleve = async (req, res) => {
     const { matricule } = req.params;
     const [rows] = await pool.query(`
       SELECT 
-        f.idFrequente, f.matricule, f.idSalle, f.idAcademi,
+        f.idFrequente, f.matricule, f.idClasse, f.idAcademi,
         c.libelle AS classe,
         s.libelle AS salle,
         a.libelle AS annee, a.periode
       FROM Frequente f
-      JOIN Salle s ON s.idSalle = f.idSalle
-      JOIN Classe c ON c.idClasse = s.idClasse
+      JOIN Classe c ON c.idClasse = f.idClasse
+      LEFT JOIN Salle s ON s.idSalle = c.idSalle
       JOIN AnneeAcademique a ON a.idAnnee = f.idAcademi
       WHERE f.matricule = ?
       ORDER BY a.libelle DESC
